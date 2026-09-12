@@ -1,113 +1,124 @@
-# hacka_Libreta_FRONT
+# LIBRETA — Frontend PWA
 
-Frontend del proyecto **Libreta** (hackathon), construido con React + Vite + TypeScript.
+Frontend cliente de **LIBRETA — Microcrédito Verificable & Portabilidad de Reputación Financiera** para el **ETH Bolivia Buildathon 2026**.
 
-## Stack
+Construido como una **Progressive Web Application (PWA)** de alto rendimiento con **React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query y Zustand**.
+
+---
+
+## 📚 Documentación de Ingeniería
+
+Para detalles exhaustivos de arquitectura, flujos e implementación, consulta los documentos de especificación:
+
+- 📄 **[Especificación Técnica del Frontend](docs/FRONTEND_SPECIFICATION.md)**: Arquitectura PWA, estrategia Offline-First con IndexedDB, integraciones Web3 (@pollar/react, @unlock-protocol/paywall) y sincronización con HSK Chain.
+- 📋 **[Historias de Usuario del Frontend](docs/USER_STORIES_FRONTEND.md)**: 13 Historias de usuario detalladas (US-F01 a US-F13) con criterios de aceptación Gherkin y requerimientos de UI para Prestatarios, Cobradores, Prestamistas y Auditores.
+- 🌐 **[Documentación Integral del Proyecto](../README.md)**: Visión global, marco legal UNCITRAL, formulación del índice LRI y guion de demostración.
+
+---
+
+## 🛠️ Stack Tecnológico
 
 | Herramienta | Para qué se usa |
 |---|---|
-| [Vite](https://vite.dev) | Servidor de desarrollo y build. Arranca rápido y recompila al instante. |
-| [React](https://react.dev) + TypeScript | Librería de UI y tipado estático. |
-| [React Router](https://reactrouter.com) | Navegación entre páginas (rutas). |
-| [TanStack Query](https://tanstack.com/query) | Manejo de datos que vienen del backend (fetch, cache, loading/error). |
-| [Zustand](https://zustand-demo.pmnd.rs/) | Estado global simple del lado del cliente (cosas que no vienen de una API). |
-| [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) | Formularios y validación de datos. |
-| [Tailwind CSS](https://tailwindcss.com) | Estilos, escribiendo clases directamente en el JSX. |
-| [oxlint](https://oxc.rs) | Linter (detecta errores y malas prácticas en el código). |
+| [Vite](https://vite.dev) | Servidor de desarrollo ultrarrápido y empaquetador para producción. |
+| [React 19](https://react.dev) + TypeScript | Librería de UI con soporte concurrente nativo y tipado estático riguroso. |
+| [React Router v7](https://reactrouter.com) | Navegación protegida por roles (`/borrower`, `/collector`, `/lender`, `/p/:slug`). |
+| [TanStack Query v5](https://tanstack.com/query) | Caché inteligente, sincronización con backend y manejo de estados asíncronos. |
+| [Zustand](https://zustand-demo.pmnd.rs/) | Gestión de estado cliente (sesión, conectividad y cola offline). |
+| [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) | Formularios de alto rendimiento y validación declarativa de esquemas. |
+| [Tailwind CSS v4](https://tailwindcss.com) | Sistema de diseño atómico responsive-first con cero CSS runtime. |
+| [@pollar/react](https://docs.pollar.xyz/) | Pasarela de liquidación digital de cuotas en **1 USDC Mainnet** (Bounty Pollar). |
+| [@unlock-protocol/paywall](https://docs.unlock-protocol.com/) | Portal **Token-Gated** para auditoría bancaria con NFTs de membresía (Bounty Unlock). |
+| [idb-keyval / IndexedDB](https://developer.mozilla.org/es/docs/Web/API/IndexedDB_API) | Persistencia local y cola de transacciones para cobradores sin internet. |
 
-## Requisitos
+---
 
+## 🚀 Cómo Correr el Proyecto
+
+### 1. Requisitos
 - Node.js 20+
 - npm
 
-## Cómo correr el proyecto
-
+### 2. Instalación y Configuración
 ```bash
 # 1. Instalar dependencias
 npm install
 
 # 2. Configurar variables de entorno
 cp .env.example .env
-# editar .env y poner la URL del backend en VITE_API_URL
-
-# 3. Levantar el servidor de desarrollo
-npm run dev
+# Configura las variables según tu entorno local
 ```
 
-Esto abre el proyecto en `http://localhost:5173` (o el próximo puerto libre). Los cambios en el código se reflejan al instante sin recargar la página.
+### 3. Servidor de Desarrollo
+```bash
+npm run dev
+```
+Abre la aplicación en `http://localhost:5173`.
 
-## Scripts disponibles
+---
+
+## 📱 Scripts Disponibles
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Levanta el servidor de desarrollo con hot-reload. |
-| `npm run build` | Chequea tipos (TypeScript) y genera el build de producción en `dist/`. |
-| `npm run preview` | Sirve el build de `dist/` localmente, para probar cómo queda antes de deployar. |
-| `npm run lint` | Corre el linter sobre todo el código. |
+| `npm run dev` | Levanta el servidor de desarrollo con Hot Module Replacement (HMR). |
+| `npm run build` | Valida tipos TypeScript y genera el build de producción en `dist/`. |
+| `npm run preview` | Previsualiza localmente el build optimizado de `dist/`. |
+| `npm run lint` | Ejecuta el linter (oxlint) sobre el código fuente. |
 
-## Estructura del proyecto
+---
+
+## 🏗️ Estructura del Código
 
 ```
 src/
-├── app/            # Configuración global de la aplicación
-│   ├── AppProviders.tsx   # Envuelve la app con los providers (React Query, etc.)
-│   ├── router.tsx         # Definición de todas las rutas de la app
-│   └── Layout.tsx         # Esqueleto visual compartido (navbar + contenido)
+├── app/                      # Configuración raíz de la aplicación
+│   ├── AppProviders.tsx     # TanStack Query, Zustand y Web3 Context Providers
+│   ├── router.tsx           # Definición de rutas y navegación por roles
+│   └── Layout.tsx           # Shell compartido (Navbar, Status Bar y Layout)
 │
-├── pages/          # Una carpeta/archivo por cada pantalla de la app
-│   └── HomePage.tsx
+├── pages/                    # Vistas completas por ruta
+│   ├── HomePage.tsx         # Landing y selección de rol
+│   ├── borrower/            # Portal del prestatario y libreta digital
+│   ├── collector/           # Modo cobrador en ruta (PWA Offline)
+│   ├── lender/              # Dashboard de cartera y creación de créditos
+│   └── passport/            # Libreta Passport y auditoría Token-Gated
 │
-├── components/     # Componentes de UI reutilizables entre varias páginas
-│                   # (botones, inputs, cards, modales, etc.)
+├── components/               # Componentes UI reutilizables
+│   ├── ui/                  # Botones, badges, inputs, skeletons, modales
+│   └── web3/                # PollarPayButton, UnlockPaywallModal, HskTxLink
 │
-├── features/       # Lógica agrupada por dominio/funcionalidad del negocio
-│                   # (ej: features/notas/ con sus hooks, tipos y llamadas a la API)
+├── features/                 # Módulos de dominio y lógica de negocio
+│   ├── loans/               # Hooks, tipos y servicios de microcréditos
+│   ├── installments/        # Cronogramas y confirmaciones de pago
+│   ├── offline-sync/        # Gestión de IndexedDB y sync queue
+│   └── passport/            # Métricas LRI y expedientes forenses
 │
-├── lib/            # Utilidades técnicas compartidas
-│   ├── httpClient.ts   # Cliente HTTP central para hablar con el backend
-│   └── queryClient.ts  # Configuración de React Query
+├── lib/                      # Clientes e infraestructura
+│   ├── httpClient.ts        # Cliente Fetch tipado hacia NestJS
+│   └── queryClient.ts       # Configuración global de TanStack Query
 │
-├── App.tsx         # Componente raíz: junta providers + router
-├── main.tsx        # Punto de entrada: monta React en el HTML
-└── index.css       # Import de Tailwind (estilos globales)
+├── App.tsx                   # Entrada de componentes (Providers + Router)
+├── main.tsx                  # Bootstrap en el DOM
+└── index.css                 # Import de Tailwind CSS
 ```
 
-### Cómo funciona cada parte
+---
 
-**`main.tsx`** es lo primero que se ejecuta. Toma el `<div id="root">` de `index.html` y monta ahí el componente `App`.
+## 🔑 Variables de Entorno (.env)
 
-**`App.tsx`** no tiene lógica propia: solo envuelve todo con `AppProviders` (para que React Query y demás funcionen en cualquier parte de la app) y con `RouterProvider` (para que la navegación funcione).
+```env
+# URL del Gateway NestJS
+VITE_API_URL=http://localhost:3000
 
-**`app/router.tsx`** define qué componente se muestra en cada URL. Para agregar una página nueva:
-1. Crear el componente en `src/pages/` (ej: `src/pages/NotasPage.tsx`)
-2. Agregarlo como `children` en `router.tsx` con su `path`
+# Integración Pollar (Bounty Pollar - 1 USDC Mainnet)
+VITE_POLLAR_APP_ID=pollar_app_live_xxxx
+VITE_POLLAR_CHAIN_ID=1
 
-**`app/Layout.tsx`** es el "marco" que se repite en todas las páginas (navbar, sidebar, etc.). El `<Outlet />` es donde se inyecta el contenido de la página actual.
+# Integración Unlock Protocol (Bounty Unlock - Token-Gated Audit Dossier)
+VITE_UNLOCK_LOCK_ADDRESS=0x0000000000000000000000000000000000000000
+VITE_UNLOCK_NETWORK=8453
 
-**`pages/`** contiene una pantalla completa por archivo. Una página arma su vista combinando componentes de `components/` y lógica de `features/`.
-
-**`components/`** son piezas de UI chicas y reutilizables, sin lógica de negocio pesada (reciben datos por props y renderizan).
-
-**`features/`** agrupa todo lo relacionado a una funcionalidad concreta del producto (por ejemplo, "notas", "usuarios"). Dentro de cada feature suele haber:
-- hooks que usan React Query para traer/mandar datos (`useNotas.ts`)
-- tipos de TypeScript propios del dominio
-- lógica específica de esa parte del negocio
-
-**`lib/httpClient.ts`** es el único lugar donde se arma la URL del backend y se manejan los errores HTTP. Cualquier llamada a la API pasa por acá (`httpClient.get('/notas')`, `httpClient.post('/notas', data)`), así no repetimos `fetch` con headers y manejo de errores en cada archivo.
-
-**`lib/queryClient.ts`** configura React Query (por ejemplo, cuántas veces reintentar un pedido fallido).
-
-## Cómo lo vamos a manejar
-
-- **Datos que vienen del backend** → siempre con React Query, usando `httpClient` (nunca `fetch` directo desde un componente).
-- **Estado que es solo del frontend** (ej: un modal abierto, un filtro seleccionado) → `useState` si es local a un componente, o Zustand si lo necesitan varios componentes a la vez.
-- **Formularios** → React Hook Form para el manejo del formulario + Zod para definir y validar el "shape" de los datos.
-- **Estilos** → Tailwind, escribiendo las clases directo en el JSX. Evitar archivos `.css` sueltos salvo casos puntuales.
-- **Antes de subir cambios**: correr `npm run lint` y `npm run build` para asegurarse de que no rompimos nada.
-- **Variables sensibles o de configuración** (URLs, keys) van en `.env`, nunca hardcodeadas en el código. `.env` no se sube al repo (está en `.gitignore`); `.env.example` sí, como referencia de qué variables existen.
-
-## Variables de entorno
-
-| Variable | Descripción |
-|---|---|
-| `VITE_API_URL` | URL base del backend (ej: `http://localhost:3000`) |
+# Explorador HSK Chain (Track HSK Chain)
+VITE_HSK_EXPLORER_URL=https://hskchain.net
+```
