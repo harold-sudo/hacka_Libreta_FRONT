@@ -9,6 +9,8 @@ import { httpClient, HttpError } from '../../lib/httpClient'
 
 import { useAuthStore } from '../auth/stores/authStore'
 import { useSettlements, type Intent } from './useSettlements'
+import type { CreditWorkspaceProps } from './workspace'
+import { hskChain, CONTRACT_ADDRESS } from '../../lib/web3/config'
 
 type Envelope<T> = { success: boolean; data: T }
 const post = async <T,>(path: string, body: unknown) => (await httpClient.post<Envelope<T>>(path, body)).data
@@ -29,7 +31,7 @@ function remember(id: string, hash: string) {
   try { localStorage.setItem(`libreta:pollar:attempt:${id}`, hash) } catch { /* Current screen still retains the attempt. */ }
 }
 
-export function InstallmentPayments() {
+export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) {
   const pollar = usePollar()
   const cache = useQueryClient()
   const { user, openLoginModal } = useAuthStore()
@@ -80,24 +82,35 @@ export function InstallmentPayments() {
     } finally { sendLock.current = false }
   }
   return <div className="space-y-5">
-    <p className="text-sm text-slate-300">Paga cuotas de prueba en USDC. El importe y el destinatario vienen de tu crédito; el backend verifica el pago y registra el comprobante en HSK testnet.</p>
+    <ol className="grid gap-2 text-xs sm:grid-cols-3" aria-label="Flujo del crédito">
+      <li className="rounded-lg bg-white/5 p-3">1. Crédito y cuotas registrados</li>
+      <li className="rounded-lg bg-white/5 p-3">2. Pago USDC verificado en Stellar</li>
+      <li className="rounded-lg bg-white/5 p-3">3. Comprobante anclado en HSK</li>
+    </ol>
+    {view === 'pay' && <p className="text-sm text-slate-300">Selecciona una cuota. El importe y el destinatario vienen del crédito. La confirmación HSK es automática; no necesitas firmar un segundo pago.</p>}
+    {view === 'history' && <p className="text-sm text-slate-300">Aquí ves el mismo crédito, sus cuotas y las evidencias Stellar y HSK. Un pago conciliado puede tener el anclaje HSK aún pendiente.</p>}
     {!user ? <Button onClick={openLoginModal}>Iniciar sesión en CREDITCHAIN</Button> : <>
       {snapshot.isPending && <p>Cargando cuotas…</p>}
       {snapshot.error && <p className="text-sm text-amber-300">{snapshot.error.message}</p>}
       {snapshot.error instanceof HttpError && snapshot.error.status === 401 && <p>Tu sesión expiró. Cierra sesión e ingresa de nuevo; los pagos reportados siguen procesándose.</p>}
       {snapshot.data && <>
         <p className="break-all text-xs text-slate-400">Perfil: {snapshot.data.profile.id} · {snapshot.data.profile.role}<br />Wallet HSK: {snapshot.data.profile.wallet_address}</p>
+        <div hidden={view === 'history'} className="space-y-3">
         <Button type="button" disabled={pollar.isAuthenticated || action.isPending} onClick={pollar.openLoginModal}>Conectar wallet Pollar</Button>
         {pollar.isAuthenticated && <Button type="button" variant="outline" disabled={action.isPending} onClick={pollar.openTxHistoryModal}>Historial Pollar</Button>}
         {pollar.isAuthenticated && <Button type="button" variant="ghost" disabled={action.isPending} onClick={pollar.logout}>Desconectar wallet Pollar</Button>}
         {sender && <p className="break-all text-xs text-slate-400">Wallet Stellar: {sender}</p>}
-        {snapshot.data.profile.role === 'LENDER' && <div className="space-y-4 rounded-xl border border-white/10 p-4">
+        </div>
+        {view === 'register' && snapshot.data.profile.role !== 'LENDER' && <p>Solo un prestamista puede registrar créditos. Comparte tu ID de perfil con él.</p>}
+        {view === 'register' && snapshot.data.profile.role === 'LENDER' && <div className="space-y-4 rounded-xl border border-white/10 p-4">
           <p className="break-all text-sm">Wallet de cobro: {snapshot.data.receivingAddress ?? 'Sin configurar'}</p>
           <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || pollar.network !== 'testnet' || action.isPending} onClick={() => action.mutate(async () => { await post(`${base}/receiving-wallet`, { address: sender }) })}>Usar mi wallet conectada para cobrar</Button>
-          <details><summary className="cursor-pointer text-violet-300">Crear crédito de prueba en HSK y Supabase</summary>
+          <section><h4 className="font-semibold">Datos del crédito · USDC de prueba</h4><p className="text-xs text-slate-400">Frecuencia semanal. Al registrar se crean las cuotas y el registro HSK; no se transfieren fondos al prestatario.</p>
             <form className="mt-3 space-y-3" onSubmit={loanForm.handleSubmit(data => action.mutate(async () => {
               await httpClient.post('/api/loans', { ...data, capital: Number(data.capital), installmentAmount: Number(data.installmentAmount), totalInstallments: Number(data.totalInstallments), currency: 'USDC', frequency: 'WEEKLY', settlementNetwork: 'stellar:testnet' })
-              setNotice('Crédito registrado. El prestatario ya puede consultar sus cuotas.')
+              loanForm.reset()
+              onViewChange('history')
+              setNotice('Crédito registrado en Supabase y HSK. El prestatario ya puede consultar y pagar sus cuotas.')
             }))}>
               <Field label="ID del perfil del prestatario" {...loanForm.register('borrowerId')} error={loanForm.formState.errors.borrowerId?.message} />
               <Field label="Wallet HSK del prestatario" {...loanForm.register('borrowerWalletAddress')} error={loanForm.formState.errors.borrowerWalletAddress?.message} />
@@ -105,22 +118,31 @@ export function InstallmentPayments() {
               <Field label="Número de cuotas" {...loanForm.register('totalInstallments')} error={loanForm.formState.errors.totalInstallments?.message} />
               <Field label="USDC por cuota" {...loanForm.register('installmentAmount')} error={loanForm.formState.errors.installmentAmount?.message} />
               <Field label="Primer vencimiento" type="date" {...loanForm.register('startDate')} error={loanForm.formState.errors.startDate?.message} />
-              <Button loading={action.isPending}>Registrar crédito de prueba</Button>
+              {!snapshot.data.receivingAddress && <p className="text-amber-200">Primero configura arriba la wallet que recibirá los pagos.</p>}
+              <Button loading={action.isPending} disabled={!snapshot.data.receivingAddress}>Registrar crédito y crear cuotas</Button>
             </form>
-          </details>
+          </section>
         </div>}
-        {!snapshot.data.loans.length && <p className="text-sm text-slate-400">Todavía no tienes créditos en Supabase. Comparte tu ID de perfil y dirección HSK con el prestamista para registrar uno.</p>}
-        {snapshot.data.loans.map(loan => <div key={loan.id} className="space-y-3 rounded-xl border border-white/10 p-4">
+        {view !== 'register' && !snapshot.data.loans.length && <p className="text-sm text-slate-400">Todavía no tienes créditos en Supabase. Comparte tu ID de perfil y dirección HSK con el prestamista para registrar uno.</p>}
+        {view !== 'register' && snapshot.data.loans.map(loan => <div key={loan.id} className="space-y-3 rounded-xl border border-white/10 p-4">
           <p className="break-all text-xs text-slate-400">Crédito {loan.id} · {loan.currency} · {loan.settlement_network ?? 'Sin liquidación Pollar'}</p>
           {loan.hsk_verification !== 'VERIFIED' && <p className="text-amber-300">Crédito sin respaldo HSK verificado: {loan.hsk_verification === 'NOT_FOUND' ? 'no aparece en el contrato actual' : 'consulta no disponible'}.</p>}
+          <div className="flex flex-wrap gap-3 text-sm">
+            <span>{loan.installments.filter(i => i.status === 'PAID').length}/{loan.installments.length} cuotas pagadas · {loan.status}</span>
+            {loan.hsk_verification === 'VERIFIED' && <a className="text-violet-300 underline" href={`${hskChain.explorerUrl}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer">Contrato HSK</a>}
+          </div>
           {[...loan.installments].sort((a, b) => a.installment_number - b.installment_number).map(i => {
             const intent = snapshot.data!.intents.find(item => item.installment_id === i.id)
-            return <div key={i.id} className="flex flex-wrap items-center gap-3 text-sm"><span>Cuota {i.installment_number} · {i.amount} {loan.currency} · {i.status} · HSK {i.hsk_verified ? 'verificado' : 'sin verificar'}</span>
-              {intent ? <Button type="button" variant="outline" disabled={action.isPending} onClick={() => select(intent)}>Ver pago</Button> : i.status !== 'PAID' && snapshot.data!.profile.role === 'BORROWER' && loan.settlement_network === 'stellar:testnet' && loan.hsk_verification === 'VERIFIED' && <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || action.isPending} onClick={() => action.mutate(async () => { select(await post<Intent>(`${base}/installments/${i.id}/intent`, { address: sender })) })}>Preparar pago</Button>}
+            return <div key={i.id} className="flex flex-wrap items-center gap-3 border-t border-white/10 py-3 text-sm"><span>Cuota {i.installment_number} · {i.amount} {loan.currency} · {i.status} · HSK {i.hsk_verified ? 'verificado' : 'sin verificar'}</span>
+              {intent ? <Button type="button" variant="outline" disabled={action.isPending} onClick={() => select(intent)}>Ver pago y comprobante</Button> : view === 'pay' && i.status !== 'PAID' && snapshot.data!.profile.role === 'BORROWER' && loan.settlement_network === 'stellar:testnet' && loan.hsk_verification === 'VERIFIED' && <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || action.isPending} onClick={() => action.mutate(async () => { select(await post<Intent>(`${base}/installments/${i.id}/intent`, { address: sender })) })}>Preparar pago</Button>}
+              {intent?.tx_hash && <a className="text-violet-300 underline" href={`https://stellar.expert/explorer/testnet/tx/${intent.tx_hash}`} target="_blank" rel="noreferrer">Pago Stellar</a>}
+              {intent?.hsk_tx_hash && <a className="text-violet-300 underline" href={`${hskChain.explorerUrl}/tx/${intent.hsk_tx_hash}`} target="_blank" rel="noreferrer">Comprobante HSK</a>}
+              {intent?.status === 'VERIFIED' && <span className="text-amber-200">Pago conciliado · anclaje pendiente</span>}
+              {view === 'history' && !intent && i.status !== 'PAID' && loan.settlement_network === 'stellar:testnet' && snapshot.data!.profile.role === 'BORROWER' && <Button variant="outline" onClick={() => onViewChange('pay')}>Ir a pagar cuotas</Button>}
             </div>
           })}
         </div>)}
-        {current && <div className="space-y-3 rounded-xl border border-violet-400/40 p-4 text-sm">
+        {view !== 'register' && current && <div className="space-y-3 rounded-xl border border-violet-400/40 p-4 text-sm">
           <p>Importe: <strong>{current.amount} USDC de prueba</strong></p>
           <p className="break-all">Origen: {current.sender}</p><p className="break-all">Destinatario: {current.recipient}</p>
           <p>Estado: {current.status === 'CREATED' ? 'Esperando pago verificable' : current.status === 'VERIFIED' ? 'Cuota pagada · comprobante HSK pendiente' : 'Cuota pagada · comprobante HSK confirmado'}</p>
@@ -128,7 +150,7 @@ export function InstallmentPayments() {
           {current.tx_hash && <a className="block text-violet-300 underline" href={`https://stellar.expert/explorer/testnet/tx/${current.tx_hash}`} target="_blank" rel="noreferrer">Ver pago en Stellar</a>}
           {current.receipt_hash && <p className="break-all">Comprobante: {current.receipt_hash}</p>}
           {current.hsk_tx_hash && <a className="block text-violet-300 underline" href={`https://testnet-explorer.hsk.xyz/tx/${current.hsk_tx_hash}`} target="_blank" rel="noreferrer">Ver comprobante en HSK</a>}
-          {current.status === 'CREATED' && snapshot.data.profile.role === 'BORROWER' && <>
+          {view === 'pay' && current.status === 'CREATED' && snapshot.data.profile.role === 'BORROWER' && <>
             <Button type="button" loading={action.isPending} disabled={attempted || sender !== current.sender || !pollar.verified} onClick={() => action.mutate(pay)}>Confirmar y pagar esta cuota</Button>
             {attempted && <p>Existe un intento de envío. Revisa el historial y verifica su hash antes de considerar otro pago.</p>}
             {rejected && <Button type="button" variant="outline" disabled={action.isPending} onClick={() => { setAttempted(false); setRejected(false); try { localStorage.removeItem(`libreta:pollar:attempt:${current.id}`) } catch { /* in-memory retry */ } }}>Ya corregí el saldo del envío rechazado</Button>}

@@ -1,3 +1,30 @@
+# Navegación actual
+
+Registrar crédito → Pagar cuotas → Créditos y comprobantes. Auditoría Unlock es la sección para el auditor. Ya no se usan las pestañas manuales del contrato.
+
+## Unificación de pantallas Pollar + HSK + Unlock
+
+La navegación principal usa un único flujo: **Registrar crédito** (solo prestamista, POST /api/loans con cuotas USDC y registro HSK), **Pagar cuotas** (intenciones Pollar y conciliación existente), **Créditos y comprobantes** (misma consulta autenticada /api/pollar/settlements con evidencias Stellar y HSK) y **Auditoría Unlock** (componentes de membresía, checkout y expediente del equipo conservados).
+
+Los formularios manuales RegisterLoanForm/ConfirmPaymentForm se conservan como código técnico, pero ya no se exponen en HomePage ni se requieren para pagar. El proveedor Pollar y el componente de pago se mantienen montados al navegar para preservar hash, intento y recuperación. Transferencia libre queda en una sección secundaria explícitamente ajena a las cuotas. Registrar exige configurar previamente la wallet de cobro; al concluir lleva al historial del mismo crédito. Se alinearon VITE_UNLOCK_LOCK_ADDRESS y VITE_UNLOCK_NETWORK con la dirección pública y red del backend. Se corrigió la inyección opcional de dependencias de prueba de UnlockVerifierService para permitir el arranque de Nest. Se aplicó la migración existente 20260912_audit_logs.sql en Supabase: tablas de auditoría con RLS y acceso exclusivo del backend, más su RPC de conteos. Los contratos y las claves secretas se conservaron.
+
+Prueba manual: iniciar como prestamista, configurar wallet y registrar; comprobar cuotas en Créditos y comprobantes; iniciar como prestatario, Pagar cuotas, confirmar una sola transferencia; alternar a historial y verificar enlaces Stellar/HSK; recuperar el mismo hash sin volver a pagar. Abrir Auditoría Unlock y verificar el estado sin Key; adquirir o verificar una Key mediante el flujo existente del equipo. La membresía restringe la vista de auditoría de la aplicación; los datos de una blockchain pública siguen siendo públicos.
+
+## Prueba paso a paso de las pantallas unificadas
+
+1. Abre http://localhost:5173 e inicia sesión como **prestamista**. En **Registrar crédito**, conecta Pollar, configura tu wallet de cobro y completa los datos del prestatario. Usa la wallet HSK del prestatario, distinta de su dirección Stellar. Si el crédito ya existe, pasa al siguiente paso.
+2. En **Créditos y comprobantes**, comprueba que aparecen el crédito y sus cuotas. Espera la verificación HSK; un crédito que indique HSK sin verificar no está listo para esta prueba.
+3. Inicia sesión como **prestatario** y entra en **Pagar cuotas**. Conecta su wallet Pollar con USDC de prueba y XLM en Stellar Testnet. Selecciona una cuota y paga una sola vez.
+4. Abre **Créditos y comprobantes**. El backend verifica la transferencia y registra su comprobante en HSK. Comprueba que la cuota figura pagada y que aparecen los enlaces de transacción Stellar y HSK. Si el anclaje sigue pendiente, espera o recupera el mismo intento; no envíes otra transferencia.
+5. Recarga la página y confirma que se conserva el pago. No necesitas usar los formularios antiguos de Registrar/Confirmar directamente en el contrato.
+6. En **Auditoría Unlock**, conecta MetaMask. La membresía está configurada en **Sepolia (11155111)**, mientras que los comprobantes están en **HSK Testnet (133)**. Sin Key aparece la compra; con Key vigente se habilita la consulta forense. Consulta la wallet HSK del prestatario del paso 1 para revisar los comprobantes del mismo flujo. Comprar una Key concede acceso; no paga cuotas.
+
+Verificado en esta revisión: frontend lint/build correctos; backend build y 72 pruebas correctos; conexiones reales con 11 PASS y 0 FAIL. Un chequeo de contenido de auditoría se omitió porque la tabla aún está vacía. Falta ejecutar el pago autenticado y la compra/consulta de membresía desde las wallets del usuario para validar el recorrido completo en el navegador.
+
+---
+
+## Referencia de la revisión anterior (los nombres de navegación siguientes fueron reemplazados)
+
 # Guía de conexión y pruebas de LIBRETA
 
 Actualizada: 12 de septiembre de 2026.

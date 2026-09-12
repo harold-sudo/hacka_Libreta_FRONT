@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { httpClient } from '../../lib/httpClient'
 import { Button, Field } from '../../components/ui/primitives'
 import { InstallmentPayments } from './InstallmentPayments'
+import type { CreditWorkspaceProps } from './workspace'
 
 const schema = z.object({
   recipient: z.string().trim().regex(/^G[A-Z2-7]{55}$/, 'Ingresa una dirección Stellar que empiece por G.'),
@@ -20,13 +21,15 @@ type Evidence = { transactionHash: string; sender: string; recipient: string; am
 type Proof = { status: 'PENDING' | 'VERIFIED'; transactionHash: string; receiptHash?: string; explorerUrl?: string }
 type Envelope<T> = { success: boolean; data: T }
 
-export default function PollarWalletPayment({ apiKey }: { apiKey: string }) {
-  const [mode, setMode] = useState<'quota' | 'free'>('quota')
+export default function PollarWalletPayment({ apiKey, view, onViewChange }: { apiKey: string } & CreditWorkspaceProps) {
   const client = useMemo(() => ({ apiKey, stellarNetwork: 'testnet' as const }), [apiKey])
   return <PollarProvider client={client}>
-    <div className="mb-4 flex gap-2"><Button type="button" variant={mode === 'quota' ? 'primary' : 'outline'} onClick={() => setMode('quota')}>Cuotas de mi CREDITCHAIN</Button><Button type="button" variant={mode === 'free' ? 'primary' : 'outline'} onClick={() => setMode('free')}>Transferencia libre</Button></div>
-    <div hidden={mode !== 'quota'}><InstallmentPayments /></div>
-    <div hidden={mode !== 'free'}><PaymentForm /></div>
+    <InstallmentPayments view={view} onViewChange={onViewChange} />
+    <details className="mt-8 border-t border-white/10 pt-4">
+      <summary className="cursor-pointer text-xs text-slate-400">Herramienta independiente: transferencia libre (no paga cuotas)</summary>
+      <p className="my-3 text-sm text-amber-200">Para pagar tu crédito utiliza las cuotas de arriba. Los envíos libres no concilian una cuota ni generan su comprobante HSK.</p>
+      <PaymentForm />
+    </details>
   </PollarProvider>
 }
 
