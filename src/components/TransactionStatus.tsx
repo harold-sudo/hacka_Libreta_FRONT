@@ -11,9 +11,11 @@ export type TxStatus =
 export function TransactionStatus({
   status,
   className,
+  getExplorerUrl,
 }: {
   status: TxStatus
   className?: string
+  getExplorerUrl?: (hash: string) => string
 }) {
   if (status.kind === 'idle') return null
 
@@ -45,10 +47,10 @@ export function TransactionStatus({
           <span className="flex size-5 items-center justify-center rounded-full bg-emerald-400/20 text-xs">
             ✓
           </span>
-          Transacción confirmada en HSK Chain
+          Transacción confirmada
         </div>
         <a
-          href={txExplorerUrl(status.txHash)}
+          href={getExplorerUrl ? getExplorerUrl(status.txHash) : txExplorerUrl(status.txHash)}
           target="_blank"
           rel="noreferrer"
           className="mt-1 inline-block truncate font-mono text-xs text-emerald-300/80 underline-offset-2 hover:text-emerald-200 hover:underline"

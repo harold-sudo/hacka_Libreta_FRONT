@@ -10,11 +10,12 @@ import { RegisterLoanForm } from '../components/RegisterLoanForm'
 import { ConfirmPaymentForm } from '../components/ConfirmPaymentForm'
 import { LoanLookup } from '../components/LoanLookup'
 import { PollarPayment } from '../features/pollar/PollarPayment'
+import { AuditDossier } from '../components/AuditDossier'
 import { Tabs } from '../components/Tabs'
 import { CONTRACT_ADDRESS, CONTRACT_IS_CONFIGURED, hskChain } from '../lib/web3/config'
 import { shortenAddress } from '../lib/web3/utils'
 
-type AdvancedTab = 'pollar' | 'register' | 'payment' | 'lookup'
+type AdvancedTab = 'pollar' | 'register' | 'payment' | 'lookup' | 'audit'
 
 export function HomePage() {
   const { user, isAuthenticated } = useAuth()
@@ -148,6 +149,12 @@ export function HomePage() {
                   label: 'Consultar Crédito',
                   description: 'Estado y pruebas de pago',
                   content: <LoanLookup />,
+                },
+                {
+                  id: 'audit',
+                  label: 'Auditar Crédito (Unlock)',
+                  description: 'Expediente forense token-gated',
+                  content: <AuditDossier />,
                 },
               ]}
             />

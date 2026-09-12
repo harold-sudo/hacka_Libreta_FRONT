@@ -101,7 +101,7 @@ export function LoanLookup() {
   )
 }
 
-function LoanDetail(props: {
+export function LoanDetail(props: {
   loanId: string
   loanHash: string
   lender: string
@@ -180,7 +180,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function ProofTable({ proofs }: { proofs: PaymentProof[] }) {
+export function ProofTable({ proofs }: { proofs: PaymentProof[] }) {
   return (
     <div className="space-y-2">
       <h4 className="text-sm font-semibold text-slate-200">Pruebas de pago confirmadas</h4>

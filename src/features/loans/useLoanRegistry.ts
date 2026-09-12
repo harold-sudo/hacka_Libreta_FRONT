@@ -6,7 +6,7 @@ import { getLibretaContract, requireSigner, userFriendlyError } from '../../lib/
 import { CONTRACT_IS_CONFIGURED } from '../../lib/web3/config'
 import { toBytes32 } from '../../lib/web3/utils'
 
-interface RawLoan extends Record<string, unknown> {
+export interface RawLoan extends Record<string, unknown> {
   loanHash: string
   lender: string
   borrower: string
@@ -17,7 +17,7 @@ interface RawLoan extends Record<string, unknown> {
   status: bigint | number
 }
 
-interface RawProof extends Record<string, unknown> {
+export interface RawProof extends Record<string, unknown> {
   receiptHash: string
   installmentNumber: bigint | number
   timestamp: bigint | number
@@ -25,7 +25,7 @@ interface RawProof extends Record<string, unknown> {
   externalTxHash: string
 }
 
-function mapRawLoan(raw: RawLoan, loanId: string): Loan {
+export function mapRawLoan(raw: RawLoan, loanId: string): Loan {
   return {
     loanId,
     loanHash: raw.loanHash,
@@ -39,7 +39,7 @@ function mapRawLoan(raw: RawLoan, loanId: string): Loan {
   }
 }
 
-function mapRawProof(raw: RawProof): PaymentProof {
+export function mapRawProof(raw: RawProof): PaymentProof {
   return {
     receiptHash: raw.receiptHash,
     installmentNumber: Number(raw.installmentNumber),

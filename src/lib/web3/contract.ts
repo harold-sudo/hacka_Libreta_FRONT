@@ -1,9 +1,11 @@
-import { Contract, JsonRpcProvider, type ContractRunner } from 'ethers'
+import { Contract, FetchRequest, JsonRpcProvider, type ContractRunner } from 'ethers'
 import { LIBRETA_ABI } from './abi'
 import { CONTRACT_ADDRESS, CONTRACT_IS_CONFIGURED, hskChain } from './config'
 import { getBrowserProvider } from './provider'
 
-const readProvider = new JsonRpcProvider(hskChain.rpcUrl)
+const readRequest = new FetchRequest(hskChain.rpcUrl)
+readRequest.timeout = 10_000
+const readProvider = new JsonRpcProvider(readRequest)
 
 /**
  * Crea una instancia tipada del contrato LibretaRegistry.
