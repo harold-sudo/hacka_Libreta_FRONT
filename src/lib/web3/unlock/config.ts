@@ -12,7 +12,7 @@ export const UNLOCK_NETWORK: number = Number(
 
 export const UNLOCK_IS_CONFIGURED: boolean = UNLOCK_LOCK_ADDRESS !== ZeroAddress
 
-export const UNLOCK_LOCK_NAME = 'Auditor Financiero Certificado — LIBRETA'
+export const UNLOCK_LOCK_NAME = 'Auditor Financiero Certificado — CREDITCHAIN'
 
 const UNLOCK_RPC_SUPPORT: Record<number, string> = {
   [HSK_TESTNET.chainId]: HSK_TESTNET.rpcUrl,
@@ -59,7 +59,7 @@ export function unlockNativeSymbol(): string {
 
 export function buildUnlockPaywallConfig(): Record<string, unknown> {
   return {
-    title: 'LIBRETA · Auditoría Token-Gated',
+    title: 'CREDITCHAIN · Auditoría Token-Gated',
     locks: {
       [UNLOCK_LOCK_ADDRESS.toLowerCase()]: {
         network: UNLOCK_NETWORK,
