@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PollarPayment } from '../features/pollar/PollarPayment'
 import { ConnectionCard } from '../components/ConnectionCard'
 import { ConfirmPaymentForm } from '../components/ConfirmPaymentForm'
 import { LoanLookup } from '../components/LoanLookup'
@@ -8,7 +9,7 @@ import { CodeText } from '../components/ui/primitives'
 import { CONTRACT_ADDRESS, CONTRACT_IS_CONFIGURED, hskChain } from '../lib/web3/config'
 import { shortenAddress } from '../lib/web3/utils'
 
-type DashboardTab = 'register' | 'payment' | 'lookup'
+type DashboardTab = 'register' | 'payment' | 'lookup' | 'pollar'
 
 export function HomePage() {
   const [tab, setTab] = useState<DashboardTab>('register')
@@ -51,6 +52,12 @@ export function HomePage() {
         active={tab}
         onChange={setTab}
         tabs={[
+          {
+            id: 'pollar',
+            label: 'Pagar con Pollar',
+            description: 'USDC de prueba en Stellar',
+            content: <PollarPayment />,
+          },
           {
             id: 'register',
             label: 'Registrar Crédito',

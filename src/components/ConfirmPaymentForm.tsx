@@ -126,7 +126,7 @@ export function ConfirmPaymentForm() {
             {...register('isDigital')}
           />
           <span className="text-sm text-slate-200">
-            Pago digital (USDC vía Pollar)
+            Atestación manual de pago digital
             <span className="block text-xs text-slate-500">
               Desmarca para pago en efectivo (isDigital = false)
             </span>
@@ -135,7 +135,7 @@ export function ConfirmPaymentForm() {
 
         {isDigital && (
           <Field
-            label="externalTxHash (transacción Pollar)"
+            label="externalTxHash (transacción externa)"
             hint="Opcional · si se deja vacío se guarda bytes32(0)"
             {...register('externalTxHash')}
             error={errors.externalTxHash?.message}

@@ -1,4 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? ''
+let accessToken: string | null = null
+export function setApiAccessToken(token: string | null) { accessToken = token }
 
 export class HttpError extends Error {
   status: number
@@ -11,12 +13,18 @@ export class HttpError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
+    headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...init?.headers },
   })
 
   if (!response.ok) {
-    throw new HttpError(response.status, await response.text())
+    const text = await response.text()
+    let message = text
+    try {
+      const error = JSON.parse(text)
+      message = Array.isArray(error.message) ? error.message.join('. ') : error.message || error.error?.message || text
+    } catch { /* Keep the original response for non-JSON errors. */ }
+    throw new HttpError(response.status, message)
   }
 
   if (response.status === 204) {

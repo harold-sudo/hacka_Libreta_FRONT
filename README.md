@@ -1,3 +1,5 @@
+> **Pollar testnet:** [Configuración desde cero y alcance de la integración](docs/POLLAR_SETUP.md). SDK y verificación disponibles; requiere crear la app Pollar. No concilia cuotas ni acredita mainnet.
+
 # LIBRETA — Frontend PWA
 
 Frontend cliente de **LIBRETA — Microcrédito Verificable & Portabilidad de Reputación Financiera** para el **ETH Bolivia Buildathon 2026**.
