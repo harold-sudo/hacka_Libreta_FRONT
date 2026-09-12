@@ -1,18 +1,14 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 
 export function Layout() {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <header className="border-b border-gray-200 px-6 py-4">
-        <nav className="flex items-center gap-4">
-          <Link to="/" className="text-lg font-semibold">
-            Libreta
-          </Link>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <Outlet />
-      </main>
+    <div className="min-h-screen bg-[#070a12] text-slate-100">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(134,59,255,0.15),transparent)]" />
+      <div className="relative">
+        <main className="mx-auto w-full max-w-3xl px-6 py-10">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
