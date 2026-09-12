@@ -24,7 +24,7 @@ export default function PollarWalletPayment({ apiKey }: { apiKey: string }) {
   const [mode, setMode] = useState<'quota' | 'free'>('quota')
   const client = useMemo(() => ({ apiKey, stellarNetwork: 'testnet' as const }), [apiKey])
   return <PollarProvider client={client}>
-    <div className="mb-4 flex gap-2"><Button type="button" variant={mode === 'quota' ? 'primary' : 'outline'} onClick={() => setMode('quota')}>Cuotas de mi libreta</Button><Button type="button" variant={mode === 'free' ? 'primary' : 'outline'} onClick={() => setMode('free')}>Transferencia libre</Button></div>
+    <div className="mb-4 flex gap-2"><Button type="button" variant={mode === 'quota' ? 'primary' : 'outline'} onClick={() => setMode('quota')}>Cuotas de mi CREDITCHAIN</Button><Button type="button" variant={mode === 'free' ? 'primary' : 'outline'} onClick={() => setMode('free')}>Transferencia libre</Button></div>
     <div hidden={mode !== 'quota'}><InstallmentPayments /></div>
     <div hidden={mode !== 'free'}><PaymentForm /></div>
   </PollarProvider>

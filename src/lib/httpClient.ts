@@ -2,6 +2,9 @@ const API_URL = import.meta.env.VITE_API_URL ?? ''
 let accessToken: string | null = null
 export function setApiAccessToken(token: string | null) { accessToken = token }
 
+let unauthorized: (() => void) | undefined
+export function onUnauthorized(callback: () => void) { unauthorized = callback }
+
 export class HttpError extends Error {
   status: number
 
@@ -12,12 +15,14 @@ export class HttpError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const requestToken = accessToken
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...init?.headers },
   })
 
   if (!response.ok) {
+    if (response.status === 401 && requestToken && requestToken === accessToken && !path.startsWith('/api/auth/')) unauthorized?.()
     const text = await response.text()
     let message = text
     try {

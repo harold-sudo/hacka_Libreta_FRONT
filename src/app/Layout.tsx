@@ -5,7 +5,7 @@ export function Layout() {
     <div className="min-h-screen bg-[#070a12] text-slate-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(134,59,255,0.15),transparent)]" />
       <div className="relative">
-        <main className="mx-auto w-full max-w-3xl px-6 py-10">
+        <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-6">
           <Outlet />
         </main>
       </div>

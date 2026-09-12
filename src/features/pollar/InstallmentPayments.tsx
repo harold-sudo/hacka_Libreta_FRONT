@@ -1,31 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { usePollar } from '@pollar/react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Field } from '../../components/ui/primitives'
-import { httpClient, HttpError, setApiAccessToken } from '../../lib/httpClient'
+import { httpClient, HttpError } from '../../lib/httpClient'
+
+import { useAuthStore } from '../auth/stores/authStore'
+import { useSettlements, type Intent } from './useSettlements'
 
 type Envelope<T> = { success: boolean; data: T }
-const get = async <T,>(path: string) => (await httpClient.get<Envelope<T>>(path)).data
 const post = async <T,>(path: string, body: unknown) => (await httpClient.post<Envelope<T>>(path, body)).data
 const base = '/api/pollar/settlements'
-interface Intent {
-  id: string; installment_id: string; sender: string; recipient: string; amount: string | number; issuer: string;
-  status: 'CREATED' | 'VERIFIED' | 'ANCHORED'; tx_hash: string | null; receipt_hash: string | null;
-  hsk_tx_hash: string | null; hsk_contract: string; anchor_error: string | null;
-}
-interface Snapshot {
-  profile: { id: string; role: 'BORROWER' | 'LENDER'; wallet_address: string };
-  receivingAddress: string | null;
-  loans: { id: string; currency: string; settlement_network: string | null; installments: {
-    id: string; installment_number: number; amount: number; status: string; hsk_sync_status: string;
-  }[] }[];
-  intents: Intent[];
-}
-const credentials = z.object({ email: z.email(), password: z.string().min(8, 'Mínimo 8 caracteres') })
-const profileSchema = z.object({ role: z.enum(['BORROWER', 'LENDER']), walletAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Dirección HSK inválida') })
 const loanSchema = z.object({
   borrowerId: z.uuid(), borrowerWalletAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   capital: z.string().regex(/^\d+(\.\d{1,2})?$/).refine(v => Number(v) > 0),
@@ -45,19 +32,15 @@ function remember(id: string, hash: string) {
 export function InstallmentPayments() {
   const pollar = usePollar()
   const cache = useQueryClient()
-  useEffect(() => () => { setApiAccessToken(null); cache.removeQueries({ queryKey: ['settlements'] }) }, [cache])
-  const [session, setSession] = useState<string | null>(null)
+  const { user, openLoginModal } = useAuthStore()
   const [notice, setNotice] = useState('')
   const [selected, setSelected] = useState<Intent | null>(null)
   const [hash, setHash] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [rejected, setRejected] = useState(false)
   const sendLock = useRef(false)
-  const loginForm = useForm<z.infer<typeof credentials>>({ resolver: zodResolver(credentials) })
-  const profileForm = useForm<z.infer<typeof profileSchema>>({ resolver: zodResolver(profileSchema), defaultValues: { role: 'BORROWER' } })
-  const loanForm = useForm<z.infer<typeof loanSchema>>({ resolver: zodResolver(loanSchema), defaultValues: { capital: '1', installmentAmount: '1', totalInstallments: '1', startDate: new Date().toISOString().slice(0, 10) } })
-  const snapshot = useQuery({ queryKey: ['settlements', session], enabled: !!session,
-    queryFn: () => get<Snapshot>(base), retry: false, refetchInterval: session ? 5_000 : false })
+  const loanForm = useForm<z.infer<typeof loanSchema>>({ resolver: zodResolver(loanSchema), defaultValues: { startDate: new Date().toISOString().slice(0, 10) } })
+  const snapshot = useSettlements()
   const update = () => cache.invalidateQueries({ queryKey: ['settlements'] })
   const action = useMutation({ mutationFn: async (fn: () => Promise<void>) => { setNotice(''); await fn() },
     onError: (error) => setNotice(error.message), onSuccess: () => void update(), retry: false })
@@ -96,34 +79,12 @@ export function InstallmentPayments() {
       await report(current, result.hash)
     } finally { sendLock.current = false }
   }
-  function logout() {
-    setApiAccessToken(null); setSession(null); setSelected(null); setNotice('')
-    cache.removeQueries({ queryKey: ['settlements'] })
-  }
   return <div className="space-y-5">
     <p className="text-sm text-slate-300">Paga cuotas de prueba en USDC. El importe y el destinatario vienen de tu crédito; el backend verifica el pago y registra el comprobante en HSK testnet.</p>
-    {!session ? <form className="space-y-3" onSubmit={loginForm.handleSubmit(data => action.mutate(async () => {
-      const result = await post<{ accessToken: string }>('/api/pollar/session/login', data)
-      setApiAccessToken(result.accessToken); setSession(crypto.randomUUID()); loginForm.reset()
-    }))}>
-      <p className="text-sm text-slate-400">Inicia sesión en LIBRETA para acceder a tus cuotas. La wallet de Pollar se conecta después para firmar el pago.</p>
-      <Field label="Correo de LIBRETA" type="email" autoComplete="username" {...loginForm.register('email')} error={loginForm.formState.errors.email?.message} />
-      <Field label="Contraseña" type="password" autoComplete="current-password" {...loginForm.register('password')} error={loginForm.formState.errors.password?.message} />
-      <Button type="submit" loading={action.isPending}>Iniciar sesión</Button>
-      <Button type="button" variant="outline" disabled={action.isPending} onClick={loginForm.handleSubmit(data => action.mutate(async () => {
-        const result = await post<{ message: string }>('/api/pollar/session/register', data); setNotice(result.message); loginForm.resetField('password')
-      }))}>Crear cuenta</Button>
-    </form> : <>
-      <Button type="button" variant="ghost" disabled={action.isPending} onClick={logout}>Cerrar sesión de LIBRETA</Button>
+    {!user ? <Button onClick={openLoginModal}>Iniciar sesión en CREDITCHAIN</Button> : <>
       {snapshot.isPending && <p>Cargando cuotas…</p>}
       {snapshot.error && <p className="text-sm text-amber-300">{snapshot.error.message}</p>}
       {snapshot.error instanceof HttpError && snapshot.error.status === 401 && <p>Tu sesión expiró. Cierra sesión e ingresa de nuevo; los pagos reportados siguen procesándose.</p>}
-      {snapshot.error instanceof HttpError && snapshot.error.status === 403 && <form className="space-y-3" onSubmit={profileForm.handleSubmit(data => action.mutate(async () => { await post('/api/pollar/session/profile', data) }))}>
-        <p>Crea tu perfil para comenzar.</p>
-        <label className="block text-sm">Rol <select className="bg-slate-900 p-2" {...profileForm.register('role')}><option value="BORROWER">Prestatario</option><option value="LENDER">Prestamista</option></select></label>
-        <Field label="Tu dirección HSK (0x…)" {...profileForm.register('walletAddress')} error={profileForm.formState.errors.walletAddress?.message} />
-        <Button loading={action.isPending}>Crear perfil</Button>
-      </form>}
       {snapshot.data && <>
         <p className="break-all text-xs text-slate-400">Perfil: {snapshot.data.profile.id} · {snapshot.data.profile.role}<br />Wallet HSK: {snapshot.data.profile.wallet_address}</p>
         <Button type="button" disabled={pollar.isAuthenticated || action.isPending} onClick={pollar.openLoginModal}>Conectar wallet Pollar</Button>
@@ -151,10 +112,11 @@ export function InstallmentPayments() {
         {!snapshot.data.loans.length && <p className="text-sm text-slate-400">Todavía no tienes créditos en Supabase. Comparte tu ID de perfil y dirección HSK con el prestamista para registrar uno.</p>}
         {snapshot.data.loans.map(loan => <div key={loan.id} className="space-y-3 rounded-xl border border-white/10 p-4">
           <p className="break-all text-xs text-slate-400">Crédito {loan.id} · {loan.currency} · {loan.settlement_network ?? 'Sin liquidación Pollar'}</p>
+          {loan.hsk_verification !== 'VERIFIED' && <p className="text-amber-300">Crédito sin respaldo HSK verificado: {loan.hsk_verification === 'NOT_FOUND' ? 'no aparece en el contrato actual' : 'consulta no disponible'}.</p>}
           {[...loan.installments].sort((a, b) => a.installment_number - b.installment_number).map(i => {
             const intent = snapshot.data!.intents.find(item => item.installment_id === i.id)
-            return <div key={i.id} className="flex flex-wrap items-center gap-3 text-sm"><span>Cuota {i.installment_number} · {i.amount} {loan.currency} · {i.status} · HSK {i.hsk_sync_status}</span>
-              {intent ? <Button type="button" variant="outline" disabled={action.isPending} onClick={() => select(intent)}>Ver pago</Button> : i.status !== 'PAID' && snapshot.data!.profile.role === 'BORROWER' && loan.settlement_network === 'stellar:testnet' && <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || action.isPending} onClick={() => action.mutate(async () => { select(await post<Intent>(`${base}/installments/${i.id}/intent`, { address: sender })) })}>Preparar pago</Button>}
+            return <div key={i.id} className="flex flex-wrap items-center gap-3 text-sm"><span>Cuota {i.installment_number} · {i.amount} {loan.currency} · {i.status} · HSK {i.hsk_verified ? 'verificado' : 'sin verificar'}</span>
+              {intent ? <Button type="button" variant="outline" disabled={action.isPending} onClick={() => select(intent)}>Ver pago</Button> : i.status !== 'PAID' && snapshot.data!.profile.role === 'BORROWER' && loan.settlement_network === 'stellar:testnet' && loan.hsk_verification === 'VERIFIED' && <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || action.isPending} onClick={() => action.mutate(async () => { select(await post<Intent>(`${base}/installments/${i.id}/intent`, { address: sender })) })}>Preparar pago</Button>}
             </div>
           })}
         </div>)}
