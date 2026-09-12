@@ -164,6 +164,8 @@ function MembershipGate({
       setStatus({ kind: 'success', txHash: tx.hash })
       onAcquired()
     } catch (error) {
+      // Log del error REAL en consola para depurar el fallo de claim.
+      console.error('[AuditDossier] Fallo al comprar la membresía:', error)
       setStatus({
         kind: 'error',
         message:

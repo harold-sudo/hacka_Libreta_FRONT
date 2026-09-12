@@ -9,6 +9,7 @@ import {
 import { HSK_MAINNET, HSK_TESTNET, toAddChainParameter } from '../../lib/web3/chains'
 import { formatHsk } from '../../lib/web3/utils'
 import {
+  UNLOCK_LOCK_ADDRESS,
   UNLOCK_NETWORK,
   unlockNativeSymbol,
 } from '../../lib/web3/unlock/config'
@@ -36,6 +37,11 @@ export function usePurchaseUnlockKey() {
         const signer = await provider.getSigner()
         const sender = await signer.getAddress()
 
+        const network = await provider.getNetwork()
+        console.info(
+          `[Claim Unlock] Red activa wallet=${Number(network.chainId)} | Lock=${UNLOCK_LOCK_ADDRESS} | Red del Lock=${UNLOCK_NETWORK}. Verificando red…`,
+        )
+
         await ensureWalletOnLockNetwork(provider)
 
         const contract = getUnlockLockContract(signer)
@@ -49,6 +55,8 @@ export function usePurchaseUnlockKey() {
           recipient,
         })
 
+        // Envía la transacción y ESPERA la respuesta de MetaMask: aquí se
+        // captura el tx.hash real. Sin await previo, no habría hash.
         const tx = (await contract.purchase(
           [keyPrice],
           [recipient],
@@ -62,8 +70,19 @@ export function usePurchaseUnlockKey() {
         if (!tx || typeof tx.hash !== 'string' || tx.hash.length === 0) {
           throw new Error(UNLOCK_CLAIM_NO_HASH_ERROR)
         }
+        console.info(`[Claim Unlock] Transacción enviada: ${tx.hash}`)
         return tx
       } catch (error) {
+        // Log del error REAL de la wallet/RPC (no solo el mensaje amigable).
+        console.error('[Claim Unlock] Error original de la wallet:', error)
+        if (
+          error instanceof Error &&
+          error.message === UNLOCK_CLAIM_NO_HASH_ERROR
+        ) {
+          console.error(
+            `[Claim Unlock] MetaMask NO devolvió hash. ¿La red activa coincide con UNLOCK_NETWORK=${UNLOCK_NETWORK}? ¿El lock ${UNLOCK_LOCK_ADDRESS} tiene fondos de gas? Si da revert en la simulación, la wallet nunca emite hash.`,
+          )
+        }
         throw new Error(userFriendlyError(error))
       }
     },
