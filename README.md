@@ -111,16 +111,20 @@ src/
 
 ```env
 # URL del Gateway NestJS
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3001
 
-# Integración Pollar (Bounty Pollar - 1 USDC Mainnet)
-VITE_POLLAR_APP_ID=pollar_app_live_xxxx
+# --- Track HSK Chain ---
+# 133 = HashKey Chain Testnet | 177 = HashKey Chain Mainnet
+VITE_HSK_CHAIN_ID=133
+VITE_HSK_CONTRACT_ADDRESS=0x785f249c2B25F3306b53F9D2432313e8FC9239Ce
+VITE_HSK_EXPLORER_URL=https://testnet-explorer.hsk.xyz
+
+# --- Bounty Unlock Protocol ---
+# 11155111 = Sepolia | 8453 = Base Mainnet | 137 = Polygon Mainnet
+VITE_UNLOCK_LOCK_ADDRESS=0x68AD159eAF099f581C5375A373D6b0607455E1D2
+VITE_UNLOCK_NETWORK=11155111
+
+# --- Bounty Pollar (1 USDC) ---
+VITE_POLLAR_PUBLISHABLE_KEY=pub_testnet_a73bf6ca77116b700b9b26fb94d5e50f
 VITE_POLLAR_CHAIN_ID=1
-
-# Integración Unlock Protocol (Bounty Unlock - Token-Gated Audit Dossier)
-VITE_UNLOCK_LOCK_ADDRESS=0x0000000000000000000000000000000000000000
-VITE_UNLOCK_NETWORK=8453
-
-# Explorador HSK Chain (Track HSK Chain)
-VITE_HSK_EXPLORER_URL=https://hskchain.net
 ```
