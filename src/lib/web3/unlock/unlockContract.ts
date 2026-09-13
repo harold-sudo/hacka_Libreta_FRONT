@@ -1,5 +1,6 @@
 import { Contract, FetchRequest, JsonRpcProvider, type ContractRunner } from 'ethers'
-import { UNLOCK_IS_CONFIGURED, UNLOCK_LOCK_ADDRESS, UNLOCK_RPC_URL } from './config'
+import { UNLOCK_IS_CONFIGURED, UNLOCK_LOCK_ADDRESS, UNLOCK_NETWORK, UNLOCK_RPC_URL } from './config'
+import { validateUnlockDeployment } from './validateDeployment'
 
 export const PUBLIC_LOCK_ABI = [
   'function getHasValidKey(address _recipient) external view returns (bool)',
@@ -38,6 +39,11 @@ export function getUnlockLockContract(runner?: ContractRunner): Contract {
   return new Contract(UNLOCK_LOCK_ADDRESS, PUBLIC_LOCK_ABI, runner ?? getReadProvider())
 }
 
+export async function assertUnlockDeployment(): Promise<void> {
+  getUnlockLockContract()
+  await validateUnlockDeployment(getReadProvider(), UNLOCK_LOCK_ADDRESS, UNLOCK_NETWORK)
+}
+
 export interface UnlockMembership {
   hasValidKey: boolean
   expirationTimestamp: bigint
@@ -47,6 +53,7 @@ export interface UnlockMembership {
 /** Verifica si la wallet posee una Key (membresía) válida en el Lock de Unlock Protocol. */
 export async function verifyUnlockMembership(walletAddress: string): Promise<UnlockMembership> {
   const contract = getUnlockLockContract()
+  await assertUnlockDeployment()
   const hasValidKey = (await contract.getHasValidKey(walletAddress)) as boolean
 
   let expirationTimestamp = 0n

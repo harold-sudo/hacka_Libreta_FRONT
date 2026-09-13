@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getUnlockLockContract, verifyUnlockMembership } from '../../lib/web3/unlock/unlockContract'
+import { assertUnlockDeployment, getUnlockLockContract, verifyUnlockMembership } from '../../lib/web3/unlock/unlockContract'
 import { UNLOCK_IS_CONFIGURED, UNLOCK_LOCK_ADDRESS } from '../../lib/web3/unlock/config'
 
 /** Consulta si la wallet conectada posee una Key válida en el Lock de Unlock Protocol. */
@@ -25,6 +25,7 @@ export function useUnlockLockInfo() {
   return useQuery({
     queryKey: ['unlock-lock-info', UNLOCK_LOCK_ADDRESS.toLowerCase()],
     queryFn: async () => {
+      await assertUnlockDeployment()
       const contract = getUnlockLockContract()
       const keyPrice = (await contract.keyPrice()) as bigint
       const tokenAddress = (await contract.tokenAddress()) as string

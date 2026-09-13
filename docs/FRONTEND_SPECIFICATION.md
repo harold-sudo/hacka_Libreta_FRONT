@@ -434,3 +434,17 @@ Con autorización del usuario se identificó exclusivamente la clave publicable 
 - Origin http://localhost:5173: HTTP 200, code SDK_APPLICATION_CONFIG, success true y Access-Control-Allow-Origin coincidente.
 
 Esto sustituye la hipótesis anterior de clave ausente o inválida: el bloqueo confirmado es el origen de producción no permitido para esa aplicación. Añadir https://creditchat.netlify.app a los orígenes/dominios autorizados de la aplicación correspondiente en el dashboard de Pollar, conservar localhost si se usa en desarrollo, guardar y reintentar. No se modificó el dashboard. El cambio de allowlist no exige reconstruir el frontend si se conserva la misma clave; las correcciones locales de MetaMask/React sí necesitan un nuevo deploy.
+
+## Unlock: dirección sin contrato en producción (2026-09-13)
+
+El bundle público index-Cut8HhLE.js configura el Lock 0x68ad159eaf099f581c5375a373d6b0607455e1d2 en red 133. Se verificó eth_chainId=133 y eth_getCode en el bloque 33065570 mediante https://testnet.hsk.xyz: resultado 0x (sin contrato). getHasValidKey(address), publicLockVersion() y keyPrice() devolvieron BAD_DATA al consultar ese mismo bloque. Esto no equivale a una membresía inválida; la dirección/red configuradas no identifican un PublicLock desplegado allí.
+
+El frontend ahora comprueba red real del RPC y existencia de bytecode antes de consultar membresía/metadatos, y antes de comprar mediante la wallet. Los fallos de RPC se propagan; no se convierten en false ni habilitan acceso. La presencia de código por sí sola no demuestra que sea PublicLock: los métodos del ABI siguen debiendo responder correctamente.
+
+Pendiente: obtener del usuario el enlace de su Lock o transacción de creación y verificar red/dirección reales. Configurar VITE_UNLOCK_LOCK_ADDRESS, VITE_UNLOCK_NETWORK y VITE_UNLOCK_RPC_URL coherentes en Netlify y reconstruir. netlify.toml actualmente fija VITE_UNLOCK_NETWORK=133: revisar también ese valor si el Lock está en otra red. No se cambió la dirección ni se desplegó un contrato nuevo; no se enviaron transacciones. Las correcciones de diagnóstico son locales y requieren deploy. Pruebas: node --test tests/unlock-deployment.test.mjs, npm run lint, npm run build.
+
+### PublicLock correcto verificado: Ethereum Sepolia
+
+El usuario proporcionó https://app.unlock-protocol.com/locks/lock?address=0x68ad159eaf099f581c5375a373d6b0607455e1d2&network=11155111. Consulta read-only del bloque Sepolia 11697176: código 2143 bytes, publicLockVersion=14, name=CreditChain, keyPrice=0 y getHasValidKey(ZeroAddress)=false con retorno ABI válido. No se consultó la membresía de una wallet del usuario ni se adquirió una Key.
+
+netlify.toml y .env.example ahora fijan VITE_UNLOCK_NETWORK=11155111, VITE_UNLOCK_LOCK_ADDRESS=0x68ad159eaf099f581c5375a373d6b0607455e1d2 y VITE_UNLOCK_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com. Esto sustituye el valor 133 anterior para Unlock. Los créditos y comprobantes HSK conservan su configuración independiente. Se requiere desplegar el frontend actualizado y mantener coherentes los valores del dashboard Netlify. En el backend, el verificador usa UNLOCK_LOCK_ADDRESS con la misma dirección y UNLOCK_NETWORK_RPC=https://ethereum-sepolia-rpc.publicnode.com; los valores de Render no se modificaron desde esta sesión.

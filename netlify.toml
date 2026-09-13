@@ -11,8 +11,10 @@
 # Los secretos / valores por entorno conviene setearlos también en:
 #   Site settings  >  Build & deploy  >  Environment
 [build.environment]
-  # Red del PublicLock de Unlock (133 = HashKey Chain Testnet)
-  VITE_UNLOCK_NETWORK = "133"
+  # PublicLock CreditChain verificado en Ethereum Sepolia; HSK conserva su red.
+  VITE_UNLOCK_NETWORK = "11155111"
+  VITE_UNLOCK_LOCK_ADDRESS = "0x68ad159eaf099f581c5375a373d6b0607455e1d2"
+  VITE_UNLOCK_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
 
 # Variables específicas del contexto de producción.
 [context.production.environment]
@@ -25,8 +27,7 @@
 
 # Variables que deben venir del DASHBOARD de Netlify (por entorno, no commiteadas):
 #
-#   VITE_UNLOCK_LOCK_ADDRESS  → 0x... PublicLock REAL en HSK Testnet
-#   VITE_UNLOCK_RPC_URL       → RPC de la red del Lock si no está por defecto
+#   Unlock se configura arriba con dirección, red y RPC públicos verificados.
 #   VITE_POLLAR_PUBLISHABLE_KEY → clave publicable de Pollar (testnet/mainnet)
 #   VITE_HSK_CONTRACT_ADDRESS → LibretaRegistry desplegado en HSK
 

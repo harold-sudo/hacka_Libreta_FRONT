@@ -14,6 +14,7 @@ import {
   unlockNativeSymbol,
 } from '../../lib/web3/unlock/config'
 import { getUnlockLockContract } from '../../lib/web3/unlock/unlockContract'
+import { validateUnlockDeployment } from '../../lib/web3/unlock/validateDeployment'
 
 export const UNLOCK_CLAIM_NO_HASH_ERROR =
   'No transaction hash returned. Failed to claim membership.'
@@ -43,6 +44,7 @@ export function usePurchaseUnlockKey() {
         )
 
         await ensureWalletOnLockNetwork(provider)
+        await validateUnlockDeployment(provider, UNLOCK_LOCK_ADDRESS, UNLOCK_NETWORK)
 
         const contract = getUnlockLockContract(signer)
         const keyPrice = (await contract.keyPrice()) as bigint
