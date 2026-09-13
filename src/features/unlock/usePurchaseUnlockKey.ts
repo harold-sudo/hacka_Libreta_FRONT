@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query'
 import type { BrowserProvider, Contract, ContractTransactionResponse } from 'ethers'
 import { userFriendlyError } from '../../lib/web3/contract'
 import {
-  getBrowserProvider,
   getEthereumProvider,
 } from '../../lib/web3/provider'
 import { HSK_MAINNET, HSK_TESTNET, toAddChainParameter } from '../../lib/web3/chains'
@@ -15,6 +14,7 @@ import {
 } from '../../lib/web3/unlock/config'
 import { getUnlockLockContract } from '../../lib/web3/unlock/unlockContract'
 import { validateUnlockDeployment } from '../../lib/web3/unlock/validateDeployment'
+import { prepareUnlockWallet } from '../../lib/web3/unlock/prepareWallet'
 
 export const UNLOCK_CLAIM_NO_HASH_ERROR =
   'No transaction hash returned. Failed to claim membership.'
@@ -34,18 +34,16 @@ export function usePurchaseUnlockKey() {
   return useMutation({
     mutationFn: async (recipient: string): Promise<ContractTransactionResponse> => {
       try {
-        const provider = getBrowserProvider()
+        const wallet = getEthereumProvider()
+        if (!wallet) throw new Error('MetaMask no detectado. Conecta tu wallet antes de adquirir la membresía.')
+        const hskChain = UNLOCK_NETWORK === HSK_MAINNET.chainId ? HSK_MAINNET
+          : UNLOCK_NETWORK === HSK_TESTNET.chainId ? HSK_TESTNET : null
+        const provider = await prepareUnlockWallet(
+          wallet, UNLOCK_NETWORK, hskChain ? toAddChainParameter(hskChain) : undefined,
+        )
+        await validateUnlockDeployment(provider, UNLOCK_LOCK_ADDRESS, UNLOCK_NETWORK)
         const signer = await provider.getSigner()
         const sender = await signer.getAddress()
-
-        const network = await provider.getNetwork()
-        console.info(
-          `[Claim Unlock] Red activa wallet=${Number(network.chainId)} | Lock=${UNLOCK_LOCK_ADDRESS} | Red del Lock=${UNLOCK_NETWORK}. Verificando red…`,
-        )
-
-        await ensureWalletOnLockNetwork(provider)
-        await validateUnlockDeployment(provider, UNLOCK_LOCK_ADDRESS, UNLOCK_NETWORK)
-
         const contract = getUnlockLockContract(signer)
         const keyPrice = (await contract.keyPrice()) as bigint
 
@@ -64,7 +62,7 @@ export function usePurchaseUnlockKey() {
           [recipient],
           [recipient],
           [ZeroAddress],
-          [[]],
+          ['0x'],
           { value: keyPrice },
         )) as ContractTransactionResponse
 
@@ -91,47 +89,6 @@ export function usePurchaseUnlockKey() {
   })
 }
 
-/** Cambia la wallet a la red del Lock (secuencia estándar EIP-3326) antes de comprar. */
-async function ensureWalletOnLockNetwork(provider: BrowserProvider): Promise<void> {
-  const network = await provider.getNetwork()
-  if (Number(network.chainId) === UNLOCK_NETWORK) return
-
-  // Solo podemos auto-agregar cadenas HSK (parámetros públicos conocidos).
-  const hskChainForLock =
-    UNLOCK_NETWORK === HSK_MAINNET.chainId || UNLOCK_NETWORK === HSK_TESTNET.chainId
-      ? UNLOCK_NETWORK === HSK_MAINNET.chainId
-        ? HSK_MAINNET
-        : HSK_TESTNET
-      : null
-
-  const meta = getEthereumProvider()
-  const chainIdHex = `0x${UNLOCK_NETWORK.toString(16)}`
-
-  try {
-    await meta?.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: chainIdHex }] as never,
-    })
-  } catch (error) {
-    const code = (error as { code?: number }).code
-    if (code === 4902 && hskChainForLock) {
-      await meta?.request({
-        method: 'wallet_addEthereumChain',
-        params: [toAddChainParameter(hskChainForLock)] as never,
-      })
-      return
-    }
-    if (code === 4001) {
-      throw new Error(
-        'Cambia tu wallet a la red del Lock antes de comprar la membresía.',
-      )
-    }
-    throw new Error(
-      `Cambia tu wallet a la red ${UNLOCK_NETWORK} (${unlockNativeSymbol()}) del Lock para comprar la membresía.`,
-    )
-  }
-}
-
 /** Verifica que el saldo cubra el precio de la Key más el gas estimado. */
 async function ensureFundsForPurchase({
   provider,
@@ -152,7 +109,7 @@ async function ensureFundsForPurchase({
       [recipient],
       [recipient],
       [ZeroAddress],
-      [[]],
+      ['0x'],
       { value: keyPrice },
     )
     const feeData = await provider.getFeeData()
