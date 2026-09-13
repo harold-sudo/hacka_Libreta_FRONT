@@ -3,6 +3,7 @@ import { ZeroAddress, isAddress } from 'ethers'
 import { useWalletStore } from '../features/wallet/walletStore'
 import { useUnlockLockInfo, useUnlockMembership } from '../features/unlock/useUnlock'
 import { usePurchaseUnlockKey } from '../features/unlock/usePurchaseUnlockKey'
+import { dossierLink, sharedDossier } from '../features/loans/shareDossier'
 import { useBorrowerForensic } from '../features/loans/useBorrowerForensic'
 import { HSK_MAINNET, HSK_TESTNET } from '../lib/web3/chains'
 import {
@@ -238,12 +239,16 @@ function ForensicExplorer({
   membership: UnlockMembership
   onRefresh: () => void
 }) {
-  const [input, setInput] = useState('')
-  const [query, setQuery] = useState('')
+  const [input, setInput] = useState(() => sharedDossier(window.location.hash))
+  const [query, setQuery] = useState(() => sharedDossier(window.location.hash))
+  const [shareUrl, setShareUrl] = useState('')
+  const [shareMessage, setShareMessage] = useState('')
   const forensic = useBorrowerForensic(query)
 
   const submit = useCallback(() => {
     if (!input.trim()) return
+    setShareUrl('')
+    setShareMessage('')
     setQuery(input.trim())
   }, [input])
 
@@ -296,6 +301,22 @@ function ForensicExplorer({
           Generar expediente
         </Button>
       </div>
+
+      {forensic.isSuccess && forensic.data.loans.length > 0 && query && <div className="space-y-3 rounded-xl border border-white/10 p-4">
+        <Button type="button" variant="outline" onClick={async () => {
+          const link = dossierLink(query, window.location.href)
+          setShareUrl(link)
+          try {
+            await navigator.clipboard.writeText(link)
+            setShareMessage('Enlace copiado. Puedes compartirlo con el auditor.')
+          } catch {
+            setShareMessage('Selecciona y copia el enlace de abajo.')
+          }
+        }}>Compartir expediente</Button>
+        <p className="text-xs text-slate-400">Quien abra el enlace deberá conectar su wallet y tener una membresía Unlock vigente. El enlace muestra el expediente actualizado.</p>
+        {shareUrl && <Field label="Enlace del expediente" value={shareUrl} readOnly onFocus={event => event.target.select()} />}
+        <p role="status" className="text-sm text-emerald-200">{shareMessage}</p>
+      </div>}
 
       {forensic.isPending && (
         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">

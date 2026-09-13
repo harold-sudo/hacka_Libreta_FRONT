@@ -107,6 +107,10 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
       {snapshot.error && <p className="text-sm text-amber-300">{snapshot.error.message}</p>}
       {snapshot.error instanceof HttpError && snapshot.error.status === 401 && <p>Tu sesión expiró. Cierra sesión e ingresa de nuevo; los pagos reportados siguen procesándose.</p>}
       {snapshot.data && <>
+        {snapshot.data.profile.role === 'LENDER' && view !== 'register' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-4">
+          <div><h4 className="font-semibold">Mis préstamos · {snapshot.data.loans.length}</h4><p className="text-sm text-slate-400">Puedes registrar otro préstamo para el mismo prestatario o para uno diferente. Cada préstamo conserva sus propias cuotas y comprobantes.</p></div>
+          <Button type="button" disabled={action.isPending} onClick={() => { setNotice(''); onViewChange('register') }}>Nuevo préstamo</Button>
+        </div>}
         <p className="break-all text-xs text-slate-400">Perfil: {snapshot.data.profile.id} · {snapshot.data.profile.role}<br />Wallet HSK: {snapshot.data.profile.wallet_address}</p>
         <div hidden={view === 'history'} className="space-y-3">
         <Button type="button" disabled={pollar.isAuthenticated || action.isPending} onClick={pollar.openLoginModal}>Conectar wallet Pollar</Button>
@@ -125,7 +129,7 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
               loanForm.reset()
               setCustomInterest(false)
               onViewChange('history')
-              setNotice('Crédito registrado en Supabase y HSK. El prestatario ya puede consultar y pagar sus cuotas.')
+              setNotice('Préstamo registrado. Puedes consultar sus cuotas o pulsar Nuevo préstamo para registrar otro.')
             }))}>
               <Field label="ID del perfil del prestatario" {...loanForm.register('borrowerId')} error={loanForm.formState.errors.borrowerId?.message} />
               <Field label="Wallet HSK del prestatario" {...loanForm.register('borrowerWalletAddress')} error={loanForm.formState.errors.borrowerWalletAddress?.message} />

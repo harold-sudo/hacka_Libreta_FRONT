@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { sharedDossier } from '../features/loans/shareDossier'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { Navbar } from '../components/Navbar'
 import { AuthModal } from '../features/auth/components/AuthModal'
@@ -12,9 +13,9 @@ import type { CreditView } from '../features/pollar/workspace'
 type WorkspaceTab = CreditView | 'audit'
 export function HomePage() {
   const { user, isAuthenticated } = useAuth()
-  const [tab, setTab] = useState<WorkspaceTab>('history')
+  const [tab, setTab] = useState<WorkspaceTab>(() => sharedDossier(window.location.hash) ? 'audit' : 'history')
   const [creditView, setCreditView] = useState<CreditView>('history')
-  const [auditOpened, setAuditOpened] = useState(false)
+  const [auditOpened, setAuditOpened] = useState(() => Boolean(sharedDossier(window.location.hash)))
   function navigate(next: WorkspaceTab) {
     setTab(next)
     if (next === 'audit') setAuditOpened(true)
@@ -37,7 +38,7 @@ export function HomePage() {
       </div>
     </details>}
     <section id="credit-workspace" className="scroll-mt-4 space-y-5">
-      <div><h2 className="text-xl font-bold">Mi crédito, del pago al comprobante</h2>
+      <div><h2 className="text-xl font-bold">Mis créditos, del pago al comprobante</h2>
         <p className="mt-2 text-sm text-slate-400">Pollar procesa el pago. HSK conserva su comprobante. Unlock controla el acceso a la vista de auditoría.</p></div>
       <nav aria-label="Operaciones del crédito" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} onClick={() => navigate(item.id)} className={`rounded-xl border p-4 text-left ${tab === item.id ? 'border-violet-400/50 bg-violet-500/15 text-violet-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>

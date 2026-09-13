@@ -26,7 +26,7 @@ export function LenderPortal({onOpenAdvanced}: {onOpenAdvanced?: () => void}) {
       })}
       <p className="text-sm break-all">Wallet Stellar de cobro: {snapshot.data.receivingAddress ?? 'Sin configurar'}</p>
     </>}
-    <Button onClick={onOpenAdvanced}>Configurar cobros y crear crédito</Button>
+    <Button onClick={onOpenAdvanced}>Nuevo préstamo</Button>
     <p className="text-xs text-slate-400">En Registrar crédito conecta tu wallet de cobro y completa los datos del crédito. Se requiere el ID de perfil y la dirección HSK del prestatario registrado.</p>
   </div>
 }
