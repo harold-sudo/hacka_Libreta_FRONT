@@ -92,3 +92,13 @@ Resultado de esta revisión: lint y build del frontend correctos; build del back
 
 Las pruebas usan fixtures aisladas; no introducen datos de demostración en la aplicación ni en Supabase remoto.
 La revisión de conexión usa consultas de solo lectura y no sustituye la prueba de pago completa con dos sesiones de usuario.
+
+## Interés total y calendario de cuotas
+
+Registrar crédito permite porcentajes rápidos 0/5/10/15/20 o uno personalizado (hasta dos decimales), y frecuencia DAILY, WEEKLY o MONTHLY. El porcentaje se aplica una sola vez al capital; no es tasa mensual ni anual. POST /api/loans recibe interestRate numérico y calcula las cuotas en el servidor. Se conserva installmentAmount para clientes anteriores que no envían interestRate. Con interestRate presente, el servidor calcula los importes sin confiar en installmentAmount.
+
+El cálculo usa centavos y redondeo del interés al centavo más cercano (mitades hacia arriba). Distribuye los centavos sobrantes entre las primeras cuotas; la suma del principal y del total queda exacta. installment_amount representa la primera cuota; installments.amount es el importe definitivo de cada pago. public.loans.interest_rate almacena el porcentaje; los créditos anteriores conservan NULL y no se recalculan. La validación técnica admite 0–1000%, capital hasta 999999999.99 y 1–52 cuotas, sin cuotas con principal inferior a un centavo.
+
+startDate es el primer vencimiento YYYY-MM-DD. Diario avanza un día, semanal siete días; mensual conserva el día original y lo limita al último día del mes cuando corresponda (31 enero → 28/29 febrero → 31 marzo). Fechas calculadas en UTC para evitar desfases horarios. El formulario muestra total, interés, fechas e importes antes de registrar; el historial muestra porcentaje y frecuencia. Pollar cobra el importe guardado de la cuota y la conciliación/anclaje HSK existentes siguen vigentes.
+
+Ejemplo de prueba: 100 USDC, 10% total, 10 cuotas semanales = 110 USDC, 11 USDC por cuota. Probar también 100 USDC, 12.5%, 7 cuotas: primera cuota 16.08 y seis de 16.07; total 112.50. Aplicar supabase/migrations/20260913001551_loan_interest_rate.sql antes de iniciar el backend actualizado.

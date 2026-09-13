@@ -78,8 +78,22 @@ export const LIBRETA_ABI = [
     type: 'function',
     name: 'borrowerLoans',
     stateMutability: 'view',
-    inputs: [{ name: '', type: 'address', internalType: 'address' }],
-    outputs: [{ name: '', type: 'bytes32[]', internalType: 'bytes32[]' }],
+    inputs: [
+      { name: '', type: 'address', internalType: 'address' },
+      { name: '', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+  },
+  {
+    type: 'event',
+    name: 'PaymentConfirmed',
+    inputs: [
+      { name: 'loanId', type: 'bytes32', indexed: true },
+      { name: 'installmentNumber', type: 'uint16', indexed: true },
+      { name: 'receiptHash', type: 'bytes32', indexed: false },
+      { name: 'isDigital', type: 'bool', indexed: false },
+      { name: 'timestamp', type: 'uint256', indexed: false },
+    ],
   },
 ] as const
 
@@ -119,6 +133,8 @@ export interface PaymentProof {
   timestamp: bigint
   isDigital: boolean
   externalTxHash: string
+  hskTxHash?: string
+  blockNumber?: number
 }
 
 export function statusTone(status: number): string {

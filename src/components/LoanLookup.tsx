@@ -181,26 +181,52 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function ProofTable({ proofs }: { proofs: PaymentProof[] }) {
+  const [selected, setSelected] = useState<PaymentProof | null>(null)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  const copy = (text: string, key: string) => {
+    void navigator.clipboard.writeText(text)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
+
   return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-slate-200">Pruebas de pago confirmadas</h4>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-slate-200">
+          Pruebas de pago confirmadas ({proofs.length})
+        </h4>
+        <span className="text-xs text-slate-500">
+          Haz clic en cualquier cuota para auditar la prueba completa
+        </span>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-white/10">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[620px] text-left text-sm">
           <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
             <tr>
-              <th className="px-3 py-2 font-medium">Cuota</th>
-              <th className="px-3 py-2 font-medium">Fecha</th>
-              <th className="px-3 py-2 font-medium">Tipo</th>
-              <th className="px-3 py-2 font-medium">receiptHash</th>
-              <th className="px-3 py-2 font-medium">Tx</th>
+              <th className="px-3 py-2.5 font-medium">Cuota</th>
+              <th className="px-3 py-2.5 font-medium">Fecha y Hora</th>
+              <th className="px-3 py-2.5 font-medium">Método</th>
+              <th className="px-3 py-2.5 font-medium">receiptHash</th>
+              <th className="px-3 py-2.5 font-medium">Tx HSK</th>
+              <th className="px-3 py-2.5 text-right font-medium">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {proofs.map((p) => (
-              <tr key={p.installmentNumber} className="text-slate-300">
-                <td className="px-3 py-2 font-mono text-xs">#{p.installmentNumber}</td>
-                <td className="px-3 py-2 text-xs">{formatTimestamp(p.timestamp)}</td>
-                <td className="px-3 py-2">
+              <tr
+                key={p.installmentNumber}
+                className="cursor-pointer text-slate-300 transition-colors hover:bg-white/[0.03]"
+                onClick={() => setSelected(p)}
+              >
+                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-slate-200">
+                  #{p.installmentNumber}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-slate-300">
+                  {formatTimestamp(p.timestamp)}
+                </td>
+                <td className="px-3 py-2.5">
                   <StatusPill
                     dot={false}
                     tone={
@@ -209,35 +235,192 @@ export function ProofTable({ proofs }: { proofs: PaymentProof[] }) {
                         : 'border-slate-500/30 bg-slate-500/10 text-slate-300'
                     }
                   >
-                    {p.isDigital ? 'Digital' : 'Efectivo'}
+                    {p.isDigital ? 'Digital (Pollar)' : 'Efectivo'}
                   </StatusPill>
                 </td>
-                <td className="max-w-[140px] truncate px-3 py-2 font-mono text-xs text-violet-300">
-                  {shortenBytes(p.receiptHash)}
+                <td className="px-3 py-2.5 font-mono text-xs text-violet-300">
+                  <span title={p.receiptHash}>{shortenBytes(p.receiptHash)}</span>
                 </td>
-                <td className="px-3 py-2">
-                  {p.externalTxHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? (
+                <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                  {p.hskTxHash ? (
                     <a
-                      href={txExplorerUrl(p.externalTxHash)}
+                      href={txExplorerUrl(p.hskTxHash)}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono text-xs text-emerald-300 hover:underline"
+                      className="inline-flex items-center gap-1 font-mono text-xs text-emerald-300 hover:underline"
                     >
-                      Ver
+                      <span>{p.hskTxHash.slice(0, 8)}…{p.hskTxHash.slice(-6)}</span>
+                      <span className="text-[10px]">↗</span>
                     </a>
+                  ) : p.externalTxHash && p.externalTxHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? (
+                    <span className="font-mono text-xs text-slate-400" title="Hash de liquidación externa anclado">
+                      {p.externalTxHash.slice(0, 8)}…
+                    </span>
                   ) : (
-                    <span className="text-xs text-slate-600">—</span>
+                    <span className="text-xs text-slate-500">On-Chain</span>
                   )}
+                </td>
+                <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelected(p)}
+                    className="text-xs text-violet-300 hover:text-violet-200"
+                  >
+                    Ver detalles
+                  </Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Modal de Detalle Forense */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            aria-hidden
+            onClick={() => setSelected(null)}
+          />
+          <div className="relative w-full max-w-xl space-y-5 rounded-2xl border border-white/10 bg-[#0c101d] p-6 shadow-2xl">
+            <div className="flex items-start justify-between border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-100">
+                  Expediente Forense · Cuota #{selected.installmentNumber}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Prueba criptográfica sellada en el registro inmutable de HSK Chain
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+                ✕
+              </Button>
+            </div>
+
+            <div className="space-y-3.5 text-sm">
+              <div className="flex items-center justify-between rounded-lg bg-white/[0.03] p-3">
+                <span className="text-xs uppercase tracking-wider text-slate-400">
+                  Método de Liquidación
+                </span>
+                <StatusPill
+                  tone={
+                    selected.isDigital
+                      ? 'border-sky-400/30 bg-sky-400/10 text-sky-300'
+                      : 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+                  }
+                >
+                  {selected.isDigital
+                    ? '1 USDC Digital (Pollar · Stellar)'
+                    : 'Efectivo bilateral (Atestación mutua)'}
+                </StatusPill>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-white/[0.03] p-3">
+                <span className="text-xs uppercase tracking-wider text-slate-400">
+                  Fecha y Hora de Sellado
+                </span>
+                <div className="text-right">
+                  <p className="text-slate-200">{formatTimestamp(selected.timestamp)}</p>
+                  <p className="font-mono text-xs text-slate-500">
+                    UNIX: {selected.timestamp.toString()}
+                    {selected.blockNumber ? ` · Bloque #${selected.blockNumber}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-slate-400">
+                    Comprobante Criptográfico (receiptHash)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copy(selected.receiptHash, 'receipt')}
+                    className="text-xs text-violet-300 hover:text-violet-200"
+                  >
+                    {copiedKey === 'receipt' ? '✓ ¡Copiado!' : 'Copiar hash'}
+                  </button>
+                </div>
+                <p className="break-all font-mono text-xs text-violet-300">
+                  {selected.receiptHash}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  keccak256(loanId, installmentNumber, amountHash, timestamp)
+                </p>
+              </div>
+
+              {selected.hskTxHash && (
+                <div className="space-y-1.5 rounded-lg border border-emerald-400/20 bg-emerald-500/[0.04] p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-wider text-emerald-300">
+                      Transacción On-Chain (HSK Chain)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copy(selected.hskTxHash!, 'hsk')}
+                      className="text-xs text-emerald-300 hover:text-emerald-200"
+                    >
+                      {copiedKey === 'hsk' ? '✓ ¡Copiado!' : 'Copiar hash'}
+                    </button>
+                  </div>
+                  <p className="break-all font-mono text-xs text-emerald-200">
+                    {selected.hskTxHash}
+                  </p>
+                  <div className="pt-1">
+                    <a
+                      href={txExplorerUrl(selected.hskTxHash)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/25"
+                    >
+                      <span>Abrir en HSK Explorer</span>
+                      <span>↗</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {selected.externalTxHash &&
+                selected.externalTxHash !==
+                  '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+                  <div className="space-y-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-wider text-slate-400">
+                        Huella Externa (Stellar Pollar / Settlement)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copy(selected.externalTxHash, 'ext')}
+                        className="text-xs text-violet-300 hover:text-violet-200"
+                      >
+                        {copiedKey === 'ext' ? '✓ ¡Copiado!' : 'Copiar hash'}
+                      </button>
+                    </div>
+                    <p className="break-all font-mono text-xs text-slate-300">
+                      {selected.externalTxHash}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Anclado en HSK Chain como evidencia probatoria sin exposición de datos personales.
+                    </p>
+                  </div>
+                )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" onClick={() => setSelected(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function shortenBytes(value: string): string {
-  return `${value.slice(0, 12)}…${value.slice(-8)}`
+  if (!value || value.length <= 20) return value
+  return `${value.slice(0, 10)}…${value.slice(-8)}`
 }

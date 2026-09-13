@@ -3,6 +3,7 @@ import { UNLOCK_IS_CONFIGURED, UNLOCK_LOCK_ADDRESS, UNLOCK_RPC_URL } from './con
 
 export const PUBLIC_LOCK_ABI = [
   'function getHasValidKey(address _recipient) external view returns (bool)',
+  'function keyExpirationTimestampFor(uint256 _tokenId) external view returns (uint256)',
   'function keyExpirationTimestampFor(address _recipient) external view returns (uint256)',
   'function tokenOfOwnerByIndex(address _owner, uint256 _index) external view returns (uint256)',
   'function keyPrice() external view returns (uint256)',
@@ -52,12 +53,27 @@ export async function verifyUnlockMembership(walletAddress: string): Promise<Unl
   let tokenId: string | null = null
 
   if (hasValidKey) {
-    expirationTimestamp = (await contract.keyExpirationTimestampFor(walletAddress)) as bigint
     try {
       const id = (await contract.tokenOfOwnerByIndex(walletAddress, 0)) as bigint
       tokenId = id.toString()
     } catch {
       tokenId = null
+    }
+
+    try {
+      if (tokenId !== null) {
+        expirationTimestamp = (await contract['keyExpirationTimestampFor(uint256)'](
+          BigInt(tokenId),
+        )) as bigint
+      }
+    } catch {
+      try {
+        expirationTimestamp = (await contract['keyExpirationTimestampFor(address)'](
+          walletAddress,
+        )) as bigint
+      } catch {
+        expirationTimestamp = 0n
+      }
     }
   }
 

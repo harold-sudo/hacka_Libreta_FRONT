@@ -39,13 +39,19 @@ export function mapRawLoan(raw: RawLoan, loanId: string): Loan {
   }
 }
 
-export function mapRawProof(raw: RawProof): PaymentProof {
+export function mapRawProof(
+  raw: RawProof,
+  hskTxHash?: string,
+  blockNumber?: number,
+): PaymentProof {
   return {
     receiptHash: raw.receiptHash,
     installmentNumber: Number(raw.installmentNumber),
     timestamp: BigInt(raw.timestamp),
     isDigital: raw.isDigital,
     externalTxHash: raw.externalTxHash,
+    hskTxHash,
+    blockNumber,
   }
 }
 
@@ -135,8 +141,28 @@ export function useLoanProofsQuery(loanId: string) {
     queryKey: ['loan-proofs', normalized],
     queryFn: async () => {
       const contract = getLibretaContract()
-      const raw = (await contract.getLoanProofs(toBytes32(normalized))) as unknown as RawProof[]
-      return raw.map(mapRawProof)
+      const id = toBytes32(normalized)
+      const raw = (await contract.getLoanProofs(id)) as unknown as RawProof[]
+      const txMap: Record<number, { hash: string; block: number }> = {}
+      try {
+        const provider = contract.runner?.provider
+        const currentBlock = provider ? await provider.getBlockNumber() : 0
+        const fromBlock = Math.max(0, currentBlock - 50000)
+        const filter = contract.filters.PaymentConfirmed(id)
+        const events = await contract.queryFilter(filter, fromBlock)
+        for (const ev of events) {
+          const num = Number((ev as any).args?.installmentNumber)
+          if (num) {
+            txMap[num] = { hash: ev.transactionHash, block: ev.blockNumber }
+          }
+        }
+      } catch {
+        // Fallback seguro si la consulta de eventos no responde
+      }
+      return raw.map((p) => {
+        const num = Number(p.installmentNumber)
+        return mapRawProof(p, txMap[num]?.hash, txMap[num]?.block)
+      })
     },
     enabled: normalized.length > 0 && CONTRACT_IS_CONFIGURED,
     retry: false,

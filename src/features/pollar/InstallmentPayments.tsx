@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { usePollar } from '@pollar/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { calculateLoan, installmentDate } from './loan-calculation'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Field } from '../../components/ui/primitives'
@@ -17,8 +18,9 @@ const post = async <T,>(path: string, body: unknown) => (await httpClient.post<E
 const base = '/api/pollar/settlements'
 const loanSchema = z.object({
   borrowerId: z.uuid(), borrowerWalletAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-  capital: z.string().regex(/^\d+(\.\d{1,2})?$/).refine(v => Number(v) > 0),
-  installmentAmount: z.string().regex(/^\d+(\.\d{1,2})?$/).refine(v => Number(v) > 0),
+  capital: z.string().regex(/^\d+(\.\d{1,2})?$/).refine(v => Number(v) > 0 && Number(v) <= 999999999.99),
+  interestRate: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Usa hasta dos decimales').refine(v => Number(v) <= 1000, 'Máximo 1000%'),
+  frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
   totalInstallments: z.string().regex(/^\d+$/).refine(v => Number(v) >= 1 && Number(v) <= 52),
   startDate: z.string().min(10),
 })
@@ -41,7 +43,18 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
   const [attempted, setAttempted] = useState(false)
   const [rejected, setRejected] = useState(false)
   const sendLock = useRef(false)
-  const loanForm = useForm<z.infer<typeof loanSchema>>({ resolver: zodResolver(loanSchema), defaultValues: { startDate: new Date().toISOString().slice(0, 10) } })
+  const loanForm = useForm<z.infer<typeof loanSchema>>({ resolver: zodResolver(loanSchema), defaultValues: { interestRate: '0', frequency: 'WEEKLY', totalInstallments: '10', startDate: new Date().toISOString().slice(0, 10) } })
+  const watched = useWatch({control: loanForm.control})
+  const [customInterest, setCustomInterest] = useState(false)
+  let preview: ReturnType<typeof calculateLoan> | null = null
+  let previewError = ''
+  let dueDates: string[] = []
+  if (watched.capital && watched.totalInstallments && watched.interestRate !== '') {
+    try {
+      preview = calculateLoan(Number(watched.capital), Number(watched.interestRate), Number(watched.totalInstallments))
+      dueDates = preview.amounts.map((_, i) => installmentDate(watched.startDate ?? '', watched.frequency ?? 'WEEKLY', i))
+    } catch (error) { previewError = (error as Error).message; preview = null }
+  }
   const snapshot = useSettlements()
   const update = () => cache.invalidateQueries({ queryKey: ['settlements'] })
   const action = useMutation({ mutationFn: async (fn: () => Promise<void>) => { setNotice(''); await fn() },
@@ -105,10 +118,12 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
         {view === 'register' && snapshot.data.profile.role === 'LENDER' && <div className="space-y-4 rounded-xl border border-white/10 p-4">
           <p className="break-all text-sm">Wallet de cobro: {snapshot.data.receivingAddress ?? 'Sin configurar'}</p>
           <Button type="button" disabled={!pollar.verified || !sender?.startsWith('G') || pollar.network !== 'testnet' || action.isPending} onClick={() => action.mutate(async () => { await post(`${base}/receiving-wallet`, { address: sender }) })}>Usar mi wallet conectada para cobrar</Button>
-          <section><h4 className="font-semibold">Datos del crédito · USDC de prueba</h4><p className="text-xs text-slate-400">Frecuencia semanal. Al registrar se crean las cuotas y el registro HSK; no se transfieren fondos al prestatario.</p>
+          <section><h4 className="font-semibold">Datos del crédito · USDC de prueba</h4><p className="text-xs text-slate-400">Elige interés y frecuencia. Al registrar se crean las cuotas y el registro HSK; no se transfieren fondos al prestatario.</p>
             <form className="mt-3 space-y-3" onSubmit={loanForm.handleSubmit(data => action.mutate(async () => {
-              await httpClient.post('/api/loans', { ...data, capital: Number(data.capital), installmentAmount: Number(data.installmentAmount), totalInstallments: Number(data.totalInstallments), currency: 'USDC', frequency: 'WEEKLY', settlementNetwork: 'stellar:testnet' })
+              calculateLoan(Number(data.capital), Number(data.interestRate), Number(data.totalInstallments))
+              await httpClient.post('/api/loans', { ...data, capital: Number(data.capital), interestRate: Number(data.interestRate), totalInstallments: Number(data.totalInstallments), currency: 'USDC', settlementNetwork: 'stellar:testnet' })
               loanForm.reset()
+              setCustomInterest(false)
               onViewChange('history')
               setNotice('Crédito registrado en Supabase y HSK. El prestatario ya puede consultar y pagar sus cuotas.')
             }))}>
@@ -116,8 +131,32 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
               <Field label="Wallet HSK del prestatario" {...loanForm.register('borrowerWalletAddress')} error={loanForm.formState.errors.borrowerWalletAddress?.message} />
               <Field label="Capital USDC" {...loanForm.register('capital')} error={loanForm.formState.errors.capital?.message} />
               <Field label="Número de cuotas" {...loanForm.register('totalInstallments')} error={loanForm.formState.errors.totalInstallments?.message} />
-              <Field label="USDC por cuota" {...loanForm.register('installmentAmount')} error={loanForm.formState.errors.installmentAmount?.message} />
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold">Interés total del crédito</legend>
+                <p className="text-xs text-slate-400">Se aplica una sola vez al capital. No se vuelve a cobrar cada día, semana o mes.</p>
+                <div className="flex flex-wrap gap-2">
+                  {[0, 5, 10, 15, 20].map(rate => <Button key={rate} type="button" variant={!customInterest && Number(watched.interestRate) === rate ? 'primary' : 'outline'} onClick={() => {setCustomInterest(false); loanForm.setValue('interestRate', String(rate), {shouldValidate:true})}}>{rate}%</Button>)}
+                  <Button type="button" variant={customInterest ? 'primary' : 'outline'} onClick={() => setCustomInterest(true)}>Personalizado</Button>
+                </div>
+                {customInterest && <Field label="Porcentaje personalizado" inputMode="decimal" {...loanForm.register('interestRate')} error={loanForm.formState.errors.interestRate?.message} />}
+              </fieldset>
+              <label className="block space-y-2 text-sm"><span>Frecuencia de pago</span>
+                <select className="w-full rounded-xl border border-white/10 bg-slate-950 p-3" {...loanForm.register('frequency')}>
+                  <option value="DAILY">Diaria</option><option value="WEEKLY">Semanal</option><option value="MONTHLY">Mensual</option>
+                </select>
+              </label>
               <Field label="Primer vencimiento" type="date" {...loanForm.register('startDate')} error={loanForm.formState.errors.startDate?.message} />
+              {previewError && <p role="alert" className="text-sm text-amber-200">{previewError}</p>}
+              {preview && <section aria-live="polite" className="space-y-2 rounded-xl border border-violet-400/30 bg-violet-500/10 p-4">
+                <h5 className="font-semibold">Resumen antes de registrar</h5>
+                <p>Capital: {Number(watched.capital).toFixed(2)} USDC · Interés: {preview.interest.toFixed(2)} USDC ({watched.interestRate}%)</p>
+                <p className="font-semibold">Total a devolver: {preview.total.toFixed(2)} USDC</p>
+                <p>{preview.amounts.length} cuotas · {({DAILY:'Diarias', WEEKLY:'Semanales', MONTHLY:'Mensuales'})[watched.frequency ?? 'WEEKLY']} · {preview.amounts.every(a => a === preview!.amounts[0]) ? `${preview.amounts[0].toFixed(2)} USDC por cuota` : `Entre ${Math.min(...preview.amounts).toFixed(2)} y ${Math.max(...preview.amounts).toFixed(2)} USDC por cuota`}</p>
+                <details><summary className="cursor-pointer">Ver fechas e importes</summary>
+                  <ol className="mt-2 max-h-56 space-y-1 overflow-auto text-sm">{preview.amounts.map((amount, i) => <li key={i}>Cuota {i + 1} · {dueDates[i]} · {amount.toFixed(2)} USDC</li>)}</ol>
+                </details>
+                <p className="text-xs text-slate-400">Los centavos se distribuyen entre las primeras cuotas. Los pagos mensuales conservan el día elegido o el último día disponible del mes.</p>
+              </section>}
               {!snapshot.data.receivingAddress && <p className="text-amber-200">Primero configura arriba la wallet que recibirá los pagos.</p>}
               <Button loading={action.isPending} disabled={!snapshot.data.receivingAddress}>Registrar crédito y crear cuotas</Button>
             </form>
@@ -126,6 +165,7 @@ export function InstallmentPayments({view, onViewChange}: CreditWorkspaceProps) 
         {view !== 'register' && !snapshot.data.loans.length && <p className="text-sm text-slate-400">Todavía no tienes créditos en Supabase. Comparte tu ID de perfil y dirección HSK con el prestamista para registrar uno.</p>}
         {view !== 'register' && snapshot.data.loans.map(loan => <div key={loan.id} className="space-y-3 rounded-xl border border-white/10 p-4">
           <p className="break-all text-xs text-slate-400">Crédito {loan.id} · {loan.currency} · {loan.settlement_network ?? 'Sin liquidación Pollar'}</p>
+          <p className="text-sm text-slate-300">Frecuencia: {({DAILY:'Diaria',WEEKLY:'Semanal',BIWEEKLY:'Cada 14 días',MONTHLY:'Mensual'})[loan.frequency]}{loan.interest_rate != null && ` · Interés total: ${loan.interest_rate}%`} · Total: {loan.installments.reduce((sum, i) => sum + Number(i.amount), 0).toFixed(2)} {loan.currency}</p>
           {loan.hsk_verification !== 'VERIFIED' && <p className="text-amber-300">Crédito sin respaldo HSK verificado: {loan.hsk_verification === 'NOT_FOUND' ? 'no aparece en el contrato actual' : 'consulta no disponible'}.</p>}
           <div className="flex flex-wrap gap-3 text-sm">
             <span>{loan.installments.filter(i => i.status === 'PAID').length}/{loan.installments.length} cuotas pagadas · {loan.status}</span>

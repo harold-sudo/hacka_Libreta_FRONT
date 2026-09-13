@@ -5,7 +5,6 @@ import { useUnlockLockInfo, useUnlockMembership } from '../features/unlock/useUn
 import { usePurchaseUnlockKey } from '../features/unlock/usePurchaseUnlockKey'
 import { useBorrowerForensic } from '../features/loans/useBorrowerForensic'
 import { HSK_MAINNET, HSK_TESTNET } from '../lib/web3/chains'
-import { userFriendlyError } from '../lib/web3/contract'
 import {
   UNLOCK_IS_CONFIGURED,
   UNLOCK_LOCK_NAME,
@@ -91,9 +90,15 @@ export function AuditDossier() {
       )}
 
       {UNLOCK_IS_CONFIGURED && isConnected && membership.isError && (
-        <p className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-          {userFriendlyError(membership.error)}
-        </p>
+        <div className="space-y-2 rounded-xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <p>
+            No se pudo consultar el contrato de Unlock Protocol:{' '}
+            {membership.error instanceof Error ? membership.error.message : 'error al conectar con el Lock'}
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => void refetchMembership()}>
+            Reintentar verificación
+          </Button>
+        </div>
       )}
 
       {UNLOCK_IS_CONFIGURED && isConnected && hasValidKey && (

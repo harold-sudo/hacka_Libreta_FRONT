@@ -9,7 +9,7 @@ export interface Intent {
 export interface Snapshot {
   profile: { id: string; role: 'BORROWER' | 'LENDER'; wallet_address: string };
   receivingAddress: string | null;
-  loans: { id: string; capital: number | string; hsk_verification: 'VERIFIED' | 'NOT_FOUND' | 'UNAVAILABLE'; status: string; currency: string; settlement_network: string | null; installments: {
+  loans: { interest_rate?: number | null; frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'; id: string; capital: number | string; hsk_verification: 'VERIFIED' | 'NOT_FOUND' | 'UNAVAILABLE'; status: string; currency: string; settlement_network: string | null; installments: {
     id: string; installment_number: number; amount: number; due_date: string; status: string; hsk_sync_status: string; hsk_verified: boolean;
   }[] }[];
   intents: Intent[];
