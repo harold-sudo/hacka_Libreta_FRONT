@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = import.meta.env.VITE_BACKEND_URL ?? import.meta.env.VITE_API_URL ?? ''
 let accessToken: string | null = null
 export function setApiAccessToken(token: string | null) { accessToken = token }
 

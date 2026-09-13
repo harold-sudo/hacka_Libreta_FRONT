@@ -114,7 +114,7 @@ function PaymentForm() {
       {pollar.configStatus === 'error' && <Button type="button" variant="outline" onClick={pollar.retryConfig}>Reintentar conexión a Pollar</Button>}
       {pollar.network !== 'testnet' && <p className="text-sm text-rose-300">Selecciona testnet en Pollar para continuar.</p>}
       {config.isPending && <p className="text-sm text-slate-400">Consultando configuración del backend…</p>}
-      {config.isError && <div className="text-sm text-rose-300"><p>No se pudo conectar con el backend. Revisa VITE_API_URL y que NestJS esté iniciado.</p><Button type="button" variant="outline" onClick={() => void config.refetch()}>Reintentar</Button></div>}
+      {config.isError && <div className="text-sm text-rose-300"><p>No se pudo conectar con el backend. Revisa VITE_BACKEND_URL y que el backend NestJS esté desplegado/iniciado.</p><Button type="button" variant="outline" onClick={() => void config.refetch()}>Reintentar</Button></div>}
       {config.data && !config.data.configured && <p className="text-sm text-amber-300">Configura POLLAR_TESTNET_USDC_ISSUER en el backend con el emisor USDC habilitado en tu aplicación Pollar.</p>}
       <form onSubmit={form.handleSubmit((input) => send.mutate(input))} className="space-y-4">
         <fieldset disabled={send.isPending || !!evidence} className="space-y-4">
