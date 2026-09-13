@@ -1,0 +1,20 @@
+# ============================================================
+# CREDITCHAIN — Redirects Netlify
+#
+# 1) PROXY a la API: el Gateway NestJS vive en un servicio
+#    externo (Render). El frontend resuelve los endpoints como
+#    `/api/...`; esta regla los proxea (200, sin redirección 3xx)
+#    hacia el backend real. Se usa SOLO si VITE_BACKEND_URL apunta
+#    al dominio estático (esquema same-origin); si VITE_BACKEND_URL
+#    apunta directo a Render, esta regla queda inactiva (el front
+#    llama a Render sin pasar por Netlify). Mantén el orden: primero
+#    el proxy de /api/*, después la regla SPA.
+#
+# ⚠ Reemplaza la URL por el dominio exacto que Render asigne
+#   (el servicio actual es https://hacka-libreta-back.onrender.com).
+#
+/api/*  https://hacka-libreta-back.onrender.com/api/:splat  200
+
+# 2) SPA: cualquier ruta de React Router (deep link, F5) se sirve
+#    con index.html para que el router la renderice y no dé 404.
+/*    /index.html   200

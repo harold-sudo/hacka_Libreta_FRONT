@@ -1,0 +1,32 @@
+# ============================================================
+# CREDITCHAIN — Configuración de despliegue en Netlify
+# Sitio: https://creditchat.netlify.app/
+# ============================================================
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Variables inyectadas en TODAS las builds.
+# Los secretos / valores por entorno conviene setearlos también en:
+#   Site settings  >  Build & deploy  >  Environment
+[build.environment]
+  # Red del PublicLock de Unlock (133 = HashKey Chain Testnet)
+  VITE_UNLOCK_NETWORK = "133"
+
+# Variables específicas del contexto de producción.
+[context.production.environment]
+  # URL pública del backend NestJS desplegado en Render.
+  #   https://hacka-libreta-back.onrender.com
+  # Los endpoints del frontend se resuelven como `${VITE_BACKEND_URL}/api/...`.
+  # Si en su lugar quieres esquema same-origin vía proxy, pon aquí la URL del
+  # sitio y activa la regla `/api/*` de public/_redirects.
+  VITE_BACKEND_URL = "https://hacka-libreta-back.onrender.com"
+
+# Variables que deben venir del DASHBOARD de Netlify (por entorno, no commiteadas):
+#
+#   VITE_UNLOCK_LOCK_ADDRESS  → 0x... PublicLock REAL en HSK Testnet
+#   VITE_UNLOCK_RPC_URL       → RPC de la red del Lock si no está por defecto
+#   VITE_POLLAR_PUBLISHABLE_KEY → clave publicable de Pollar (testnet/mainnet)
+#   VITE_HSK_CONTRACT_ADDRESS → LibretaRegistry desplegado en HSK
+

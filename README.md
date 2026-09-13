@@ -214,7 +214,45 @@ npm run lint      # oxlint (0 errores objetivo)
 npm run preview   # previsualizar dist/
 ```
 
-## 8. Documentación
+## 8. Despliegue en Netlify
+
+### URL de producción
+
+| Recurso | URL |
+|---|---|
+| Frontend (Netlify) | `https://creditchat.netlify.app/` |
+| Backend Gateway NestJS (Render) | `https://hacka-libreta-back.onrender.com` |
+
+> ⚠️ **Netlify es hosting estático**: el Gateway NestJS se ejecuta en Render
+> (`render.yaml` en el repo backend). El frontend resuelve los endpoints como
+> `${VITE_BACKEND_URL}/api/...`. Si `VITE_BACKEND_URL` apunta al dominio estático,
+> el proxy `/api/*` de `public/_redirects` reenvía hacia Render (no pongas la URL
+> del sitio si el proxy no está activo).
+
+### Configuración del repo
+
+- `netlify.toml` — `npm run build`, publish `dist/`, y env de producción (`VITE_UNLOCK_NETWORK=133`, `VITE_BACKEND_URL=https://hacka-libreta-back.onrender.com`).
+- `public/_redirects` — regla SPA `/* → /index.html 200` (evita 404 en deep links / F5) con proxy opcional documentado para `/api/*`.
+
+### Variables de entorno en el panel de Netlify
+
+`Site settings  >  Build & deploy  >  Environment` (valores por entorno):
+
+| Variable | Valor producción |
+|---|---|
+| `VITE_BACKEND_URL` | `https://hacka-libreta-back.onrender.com` (Gateway NestJS en Render) |
+| `VITE_UNLOCK_NETWORK` | `133` (HashKey Chain Testnet) |
+| `VITE_UNLOCK_LOCK_ADDRESS` | `0x...` PublicLock REAL en HSK Testnet (reemplaza el cero) |
+| `VITE_UNLOCK_RPC_URL` | RPC de la red del Lock si no está en los defaults |
+| `VITE_POLLAR_PUBLISHABLE_KEY` | clave publicable de Pollar (nunca la secreta) |
+| `VITE_HSK_CONTRACT_ADDRESS` | `0x785f...` LibretaRegistry en HSK Testnet |
+| `VITE_HSK_CHAIN_ID` / `VITE_HSK_EXPLORER_URL` | `133` / `https://testnet-explorer.hsk.xyz` |
+
+Warnings de Netlify para Vite: `site.url` debe ser `https://creditchat.netlify.app` y el
+`base` de Vite se deja en `/`. El build de Vite embebe las `VITE_*` en tiempo de compilación:
+después de cambiar una variable en el dashboard, dispara una nueva deploy para que surta efecto.
+
+## 9. Documentación
 
 - [`docs/FRONTEND_SPECIFICATION.md`](docs/FRONTEND_SPECIFICATION.md) — arquitectura PWA y Web3.
 - [`docs/USER_STORIES_FRONTEND.md`](docs/USER_STORIES_FRONTEND.md) — 13 historias de usuario (Gherkin).
