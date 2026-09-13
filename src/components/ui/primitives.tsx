@@ -43,7 +43,7 @@ export function Button({
       {...props}
     >
       {loading && <Spinner className="size-4" />}
-      {children}
+      <span>{children}</span>
     </button>
   )
 }

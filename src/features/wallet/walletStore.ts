@@ -2,6 +2,7 @@ import { formatEther } from 'ethers'
 import { create } from 'zustand'
 import {
   getEthereumProvider,
+  selectEthereumProvider,
   getBalanceHsk,
   getCurrentChainId,
   requestAccount,
@@ -38,7 +39,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const wallet = get()
     if (wallet.isConnecting) return
 
-    const provider = getEthereumProvider()
+    const provider = selectEthereumProvider()
     if (!provider) {
       set({ hasMetaMaskError: true, error: 'MetaMask no detectado. Instala la extensión y recarga la página.' })
       return
@@ -52,20 +53,20 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         /* Si el usuario rechaza el cambio de red, se continúa con la red activa. */
       })
       const chainId = await getCurrentChainId()
-      const balanceHsk = await getBalanceHsk(address)
-
       set({
         address,
         chainId,
-        balanceHsk: formatEther(balanceHsk ?? 0n),
+        balanceHsk: null,
         isConnected: true,
         isConnecting: false,
       })
       installWalletListeners(get().refreshBalance)
+      // A slow/unavailable RPC balance must not invalidate an authorized account.
+      void get().refreshBalance()
     } catch (error) {
       set({
         isConnecting: false,
-        error: error instanceof Error ? error.message : 'Ocurrió un error al conectar la wallet.',
+        error: walletConnectionError(error),
       })
     }
   },
@@ -113,4 +114,11 @@ function installWalletListeners(refreshBalance: () => Promise<void>) {
     useWalletStore.getState().disconnect()
   })
   listenersInstalled = true
+}
+
+function walletConnectionError(error: unknown): string {
+  const code = (error as { code?: number } | null)?.code
+  if (code === 4001) return 'Rechazaste la conexión en MetaMask. Puedes volver a intentarlo.'
+  if (code === -32002) return 'Ya hay una solicitud pendiente. Abre la extensión MetaMask y apruébala o cancélala.'
+  return error instanceof Error ? error.message : 'Ocurrió un error al conectar la wallet.'
 }

@@ -23,7 +23,7 @@ export function ConnectionCard() {
             />
           ) : (
             <p className="text-sm text-slate-400">
-              Conecta tu extensión para interactuar con la red.{' '}
+              Conecta MetaMask para interactuar con la red.{' '}
               <CodeText>{hskChain.shortName}</CodeText>
             </p>
           )}
@@ -71,7 +71,7 @@ export function ConnectionCard() {
       )}
       {!wallet.isMetaMaskInstalled && !wallet.hasMetaMaskError && !wallet.isConnected && (
         <p className="mt-3 text-sm text-slate-500">
-          Sin extensión detectada. Instala MetaMask en{' '}
+          Necesitas MetaMask en este navegador. Puedes instalarla en{' '}
           <a
             href="https://metamask.io/download/"
             target="_blank"

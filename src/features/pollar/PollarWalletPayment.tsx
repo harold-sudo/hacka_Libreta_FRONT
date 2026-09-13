@@ -24,6 +24,7 @@ type Envelope<T> = { success: boolean; data: T }
 export default function PollarWalletPayment({ apiKey, view, onViewChange }: { apiKey: string } & CreditWorkspaceProps) {
   const client = useMemo(() => ({ apiKey, stellarNetwork: 'testnet' as const }), [apiKey])
   return <PollarProvider client={client}>
+    <PollarConnectionStatus />
     <InstallmentPayments view={view} onViewChange={onViewChange} />
     <details className="mt-8 border-t border-white/10 pt-4">
       <summary className="cursor-pointer text-xs text-slate-400">Herramienta independiente: transferencia libre (no paga cuotas)</summary>
@@ -31,6 +32,15 @@ export default function PollarWalletPayment({ apiKey, view, onViewChange }: { ap
       <PaymentForm />
     </details>
   </PollarProvider>
+}
+
+function PollarConnectionStatus() {
+  const pollar = usePollar()
+  if (pollar.configStatus !== 'error') return null
+  return <div role="alert" className="space-y-2 rounded-xl border border-amber-400/25 p-4 text-sm text-amber-200">
+    <p>No se pudieron cargar las opciones de conexión de Pollar. Reintenta en unos segundos. Si continúa, la configuración de Pollar de este sitio necesita revisión.</p>
+    <Button type="button" variant="outline" onClick={pollar.retryConfig}>Reintentar conexión a Pollar</Button>
+  </div>
 }
 
 function PaymentForm() {

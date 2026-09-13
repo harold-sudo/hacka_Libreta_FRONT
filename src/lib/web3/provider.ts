@@ -3,13 +3,39 @@ import { toAddChainParameter, type HskChain } from './chains'
 import { hskChain } from './config'
 
 export type WalletProvider = Eip1193Provider & {
+  isMetaMask?: boolean
+  providers?: WalletProvider[]
   on(event: string, listener: (...args: unknown[]) => void): void
   removeListener(event: string, listener: (...args: unknown[]) => void): void
 }
 
+let announcedMetaMask: WalletProvider | null = null
+let selectedProvider: WalletProvider | null = null
+
+// Register before requesting announcements; multiple extensions can overwrite
+// window.ethereum. Keep the selected provider stable for signing and events.
+window.addEventListener('eip6963:announceProvider', (event) => {
+  const detail = (event as CustomEvent<{
+    info?: { rdns?: string }
+    provider?: WalletProvider
+  }>).detail
+  if (detail?.info?.rdns === 'io.metamask' && typeof detail.provider?.request === 'function') {
+    announcedMetaMask = detail.provider
+  }
+})
+window.dispatchEvent(new Event('eip6963:requestProvider'))
+
 export function getEthereumProvider(): WalletProvider | null {
+  if (selectedProvider) return selectedProvider
   const eth = (window as typeof window & { ethereum?: WalletProvider }).ethereum
-  return eth ?? null
+  return announcedMetaMask ?? eth?.providers?.find((provider) => provider.isMetaMask)
+    ?? (eth?.isMetaMask ? eth : null)
+}
+
+export function selectEthereumProvider(): WalletProvider | null {
+  window.dispatchEvent(new Event('eip6963:requestProvider'))
+  selectedProvider = getEthereumProvider()
+  return selectedProvider
 }
 
 export function getBrowserProvider(): BrowserProvider {

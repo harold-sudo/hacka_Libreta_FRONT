@@ -30,6 +30,7 @@ export function AuditDossier() {
   const address = useWalletStore((s) => s.address)
   const connect = useWalletStore((s) => s.connect)
   const isConnecting = useWalletStore((s) => s.isConnecting)
+  const walletError = useWalletStore((s) => s.error)
 
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const membership = useUnlockMembership(isConnected ? (address ?? null) : null)
@@ -89,6 +90,8 @@ export function AuditDossier() {
           Verificando membresía en <CodeText>{UNLOCK_LOCK_NAME}</CodeText> ({UNLOCK_NETWORK})…
         </div>
       )}
+
+      {walletError && <p role="alert" className="text-sm text-rose-300">{walletError}</p>}
 
       {UNLOCK_IS_CONFIGURED && isConnected && membership.isError && (
         <div className="space-y-2 rounded-xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">

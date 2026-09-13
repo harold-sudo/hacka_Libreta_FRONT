@@ -414,3 +414,23 @@ El cálculo usa centavos y redondeo del interés al centavo más cercano (mitade
 startDate es el primer vencimiento YYYY-MM-DD. Diario avanza un día, semanal siete días; mensual conserva el día original y lo limita al último día del mes cuando corresponda (31 enero → 28/29 febrero → 31 marzo). Fechas calculadas en UTC para evitar desfases horarios. El formulario muestra total, interés, fechas e importes antes de registrar; el historial muestra porcentaje y frecuencia. Pollar cobra el importe guardado de la cuota y la conciliación/anclaje HSK existentes siguen vigentes.
 
 Ejemplo de prueba: 100 USDC, 10% total, 10 cuotas semanales = 110 USDC, 11 USDC por cuota. Probar también 100 USDC, 12.5%, 7 cuotas: primera cuota 16.08 y seis de 16.07; total 112.50. Aplicar supabase/migrations/20260913001551_loan_interest_rate.sql antes de iniciar el backend actualizado.
+
+## Correcciones de conexión en deploy (2026-09-13)
+
+MetaMask se descubre por EIP-6963 (`io.metamask`), con respaldo para proveedores legacy identificados como MetaMask. Se conserva el proveedor seleccionado para firma y eventos. Una consulta de saldo lenta o fallida no impide considerar conectada una cuenta autorizada; los errores 4001 y -32002 muestran instrucciones en español, también en Auditoría Unlock.
+
+El documento declara español y desactiva traducción automática. Button mantiene su etiqueta en un span estable al insertar el spinner. Esto mitiga la hipótesis de mutación del DOM por traducción que puede producir insertBefore; no se ha reproducido la extensión del usuario. La ruta tiene una pantalla de recuperación que recuerda revisar transacciones antes de repetirlas.
+
+Pollar muestra su fallo de configuración y permite reintentar desde la vista principal. Verificación pública del 13 de septiembre: OPTIONS /v2/applications/config permite Origin https://creditchat.netlify.app; GET sin clave responde 401 API_KEY_NOT_FOUND sin Access-Control-Allow-Origin. Por tanto, el mensaje CORS por sí solo no identifica la causa: puede ocultar un rechazo de autenticación. No se ha verificado la clave publicable del bundle de producción ni modificado el dashboard de Pollar/Netlify. No se añade un proxy para ocultar el rechazo.
+
+Pendiente en despliegue: verificar VITE_POLLAR_PUBLISHABLE_KEY (clave publicable vigente de la aplicación correcta) en el contexto Production de Netlify, revisar que la aplicación Pollar permita https://creditchat.netlify.app y sus métodos de login, y reconstruir el frontend tras cambiar variables VITE. Si continúa, revisar el código HTTP real de GET y escalar a Pollar con URL, origen y hora; nunca compartir secretos. Desactivar la traducción del sitio y recargar al probar Unlock. Estas correcciones locales requieren un nuevo deploy.
+
+Verificación de regresión: node --test tests/wallet-connection.test.mjs; npm run lint; npm run build. La suite cubre selección entre extensiones, respaldo legacy, saldo sin respuesta y errores de rechazo/solicitud pendiente. La conexión con extensiones reales y la compra de Key requieren validación manual del usuario; no se enviaron transacciones.
+
+### Diagnóstico Pollar confirmado (2026-09-13)
+
+Con autorización del usuario se identificó exclusivamente la clave publicable testnet que el bundle de producción pasa como apiKey al proveedor Pollar, sin guardar su valor en archivos. GET https://sdk.api.pollar.xyz/v2/applications/config con esa misma clave devuelve:
+- Origin https://creditchat.netlify.app: HTTP 403, code ORIGIN_NOT_ALLOWED, sin Access-Control-Allow-Origin.
+- Origin http://localhost:5173: HTTP 200, code SDK_APPLICATION_CONFIG, success true y Access-Control-Allow-Origin coincidente.
+
+Esto sustituye la hipótesis anterior de clave ausente o inválida: el bloqueo confirmado es el origen de producción no permitido para esa aplicación. Añadir https://creditchat.netlify.app a los orígenes/dominios autorizados de la aplicación correspondiente en el dashboard de Pollar, conservar localhost si se usa en desarrollo, guardar y reintentar. No se modificó el dashboard. El cambio de allowlist no exige reconstruir el frontend si se conserva la misma clave; las correcciones locales de MetaMask/React sí necesitan un nuevo deploy.
