@@ -155,15 +155,22 @@ function MembershipGate({
       label: 'Comprando la Key. Confirma la transacción en MetaMask…',
     })
     try {
+      // Espera la respuesta de la wallet (hash) antes de validar el estado.
       const tx = await purchase.mutateAsync(address)
+      if (!tx || typeof tx.hash !== 'string' || tx.hash.length === 0) {
+        throw new Error('No transaction hash returned. Failed to claim membership.')
+      }
       setStatus({
         kind: 'pending',
         label: 'Membresía adquirida. Esperando confirmación on-chain…',
       })
+      // Espera el minado/confirmación antes de renderizar el éxito.
       await tx.wait()
       setStatus({ kind: 'success', txHash: tx.hash })
       onAcquired()
     } catch (error) {
+      // Log del error REAL en consola para depurar el fallo de claim.
+      console.error('[AuditDossier] Fallo al comprar la membresía:', error)
       setStatus({
         kind: 'error',
         message:

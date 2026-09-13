@@ -48,6 +48,18 @@ export function userFriendlyError(error: unknown): string {
         e.reason ? `: ${e.reason}` : '. Revisa permisos, estado del préstamo y cuotas.'
       }`
     }
+    // Razones de revert típicas de Unlock Protocol (PublicLock).
+    const msg = `${e.shortMessage ?? ''} ${e.reason ?? ''} ${e.message ?? ''}`
+    const lower = msg.toLowerCase()
+    if (lower.includes('already_has_key') || msg.includes('ALREADY_HAS_KEY')) {
+      return 'Ya posees una Key activa en este Lock de Unlock. Verifica tu membresía actual.'
+    }
+    if (lower.includes('lock is disabled') || msg.includes('LOCK_DISABLED')) {
+      return 'Este Lock de Unlock está deshabilitado o cerrado por el administrador.'
+    }
+    if (lower.includes('insufficient funds')) {
+      return 'Saldo insuficiente en la wallet para pagar el precio de la Key más el gas.'
+    }
     return e.shortMessage ?? e.reason ?? e.message
   }
   return 'Ocurrió un error desconocido.'
