@@ -2,6 +2,7 @@ import { useAuthStore } from '../stores/authStore'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 import { cn } from '../../../lib/cn'
+import { Logo } from '../../../components/Logo'
 
 export function AuthModal() {
   const { authModalOpen, authModalMode, closeAuthModal, setModalMode } =
@@ -27,7 +28,7 @@ export function AuthModal() {
 
         {/* Encabezado con logo */}
         <div className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="CREDITCHAIN" className="h-8 w-8" />
+          <Logo size="h-8" />
           <div>
             <h3 className="text-lg font-bold text-slate-100">
               {authModalMode === 'login'

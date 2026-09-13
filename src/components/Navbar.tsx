@@ -2,6 +2,7 @@ import { useAuthStore } from '../features/auth/stores/authStore'
 import { shortenAddress } from '../lib/web3/utils'
 import { hskChain } from '../lib/web3/config'
 import { Button } from './ui/primitives'
+import { Logo } from './Logo'
 
 export function Navbar() {
   const { user, isAuthenticated, logout, openLoginModal, openRegisterModal } =
@@ -14,7 +15,7 @@ export function Navbar() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="CREDITCHAIN" className="h-9 w-9 drop-shadow" />
+          <Logo size="h-9" className="drop-shadow" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-tight text-white">
